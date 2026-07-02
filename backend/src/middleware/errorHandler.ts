@@ -1,8 +1,11 @@
-// src/middleware/errorHandler.js
-import prisma from '../config/prisma.js';
+// src/middleware/errorHandler.ts
+import { Request, Response, NextFunction } from 'express';
 
 export class AppError extends Error {
-  constructor(message, statusCode) {
+  statusCode: number;
+  isOperational: boolean;
+
+  constructor(message: string, statusCode: number) {
     super(message);
     this.statusCode = statusCode;
     this.isOperational = true;
@@ -13,12 +16,13 @@ export class AppError extends Error {
 /**
  * Global error handler
  */
-export const errorHandler = (err, req, res, next) => {
+export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction): void => {
   console.error('❌ Error:', err);
 
   // Handle Prisma errors
-  if (err.code && err.code.startsWith('P')) {
-    return handlePrismaError(err, res);
+  if (err.code && typeof err.code === 'string' && err.code.startsWith('P')) {
+    handlePrismaError(err, res);
+    return;
   }
 
   const statusCode = err.statusCode || 500;
@@ -34,8 +38,8 @@ export const errorHandler = (err, req, res, next) => {
 /**
  * Handle Prisma-specific errors
  */
-const handlePrismaError = (err, res) => {
-  const errorMap = {
+const handlePrismaError = (err: any, res: Response): void => {
+  const errorMap: Record<string, { status: number; message: string }> = {
     P2002: { status: 409, message: 'Duplicate entry' },
     P2025: { status: 404, message: 'Record not found' },
     P2014: { status: 400, message: 'Invalid relation' },
@@ -54,7 +58,7 @@ const handlePrismaError = (err, res) => {
 /**
  * 404 Not Found handler
  */
-export const notFound = (req, res) => {
+export const notFound = (req: Request, res: Response): void => {
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found`,

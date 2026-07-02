@@ -1,5 +1,7 @@
-// src/middleware/logger.js
-export const logger = (req, res, next) => {
+// src/middleware/logger.ts
+import { Request, Response, NextFunction } from 'express';
+
+export const logger = (req: Request, res: Response, next: NextFunction): void => {
   const start = Date.now();
   
   // Log on response finish
@@ -19,7 +21,7 @@ export const logger = (req, res, next) => {
   next();
 };
 
-export const morganLog = (req, res, next) => {
+export const morganLog = (req: Request, res: Response, next: NextFunction): void => {
   console.log(`📝 ${req.method} ${req.originalUrl || req.url}`);
   next();
 };

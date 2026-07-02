@@ -1,8 +1,10 @@
-// src/app.js
-import express from 'express';
+// src/app.ts
+import express, { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./config/swagger.js";
 
 // Import middleware
 import { logger } from './middleware/logger.js';
@@ -10,6 +12,8 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 // Import routes
 import routes from './routes/index.js';
+
+
 
 // Import config
 import prisma from './config/prisma.js';
@@ -35,13 +39,14 @@ app.use(express.urlencoded({ extended: true }));
 // Logging
 app.use(logger);
 
-// CORS (add if needed)
-app.use((req, res, next) => {
+// CORS
+app.use((req: Request, res: Response, next: NextFunction) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
+    res.sendStatus(200);
+    return;
   }
   next();
 });
@@ -51,6 +56,15 @@ app.use((req, res, next) => {
 // ─────────────────────────────────────────────────────────────
 
 app.use('/api', routes);
+
+// ─────────────────────────────────────────────────────────────
+// SWAGGER DOCUMENTATION
+// ─────────────────────────────────────────────────────────────
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec)
+);
 
 // ─────────────────────────────────────────────────────────────
 // ERROR HANDLING

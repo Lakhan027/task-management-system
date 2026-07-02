@@ -1,14 +1,13 @@
-// src/server.js
+// src/server.ts
 import app, { prisma } from './app.js';
-import { connectDB, disconnectDB } from './config/database.js';
+import { connectDB, disconnectDB } from './config/db.postgresql.js';
 import { getPort, getEnv } from './utils/helpers.js';
 
 const PORT = getPort();
 const ENV = getEnv();
 
-
 // START SERVER
-const startServer = async () => {
+const startServer = async (): Promise<void> => {
   try {
     // Connect to database
     await connectDB();
@@ -30,7 +29,7 @@ const startServer = async () => {
     // GRACEFUL SHUTDOWN
     // ─────────────────────────────────────────────────────────────
 
-    const shutdown = async () => {
+    const shutdown = async (): Promise<void> => {
       console.log('\n🛑 Received shutdown signal...');
       
       // Close server
@@ -63,7 +62,7 @@ const startServer = async () => {
       process.exit(1);
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Failed to start server:', error.message);
     await disconnectDB();
     process.exit(1);

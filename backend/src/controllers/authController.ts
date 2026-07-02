@@ -1,10 +1,11 @@
-// src/controllers/authController.js
+// src/controllers/authController.ts
+import { Request, Response, NextFunction } from 'express';
 import authService from '../services/authService.js';
 
 /**
  * Auth Controller - Handles HTTP requests for authentication
  */
-export const register = async (req, res, next) => {
+export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { name, email, password } = req.body;
 
@@ -20,7 +21,7 @@ export const register = async (req, res, next) => {
   }
 };
 
-export const login = async (req, res, next) => {
+export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { email, password } = req.body;
 
@@ -36,10 +37,10 @@ export const login = async (req, res, next) => {
   }
 };
 
-export const getMe = async (req, res, next) => {
+export const getMe = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     // Get user from token (will be set by auth middleware)
-    const userId = req.user?.id;
+    const userId = (req as any).user?.id;
 
     if (!userId) {
       return res.status(401).json({
@@ -59,9 +60,9 @@ export const getMe = async (req, res, next) => {
   }
 };
 
-export const changePassword = async (req, res, next) => {
+export const changePassword = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const userId = req.user?.id;
+    const userId = (req as any).user?.id;
     const { oldPassword, newPassword } = req.body;
 
     if (!userId) {
