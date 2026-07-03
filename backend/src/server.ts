@@ -1,6 +1,5 @@
-// src/server.ts
 import app, { prisma } from './app.js';
-import { connectDB, disconnectDB } from './config/db.postgresql.js';
+import { connectDB,disconnectDB } from './config/database.js';
 import { getPort, getEnv } from './utils/helpers.js';
 
 const PORT = getPort();
@@ -9,8 +8,10 @@ const ENV = getEnv();
 // START SERVER
 const startServer = async (): Promise<void> => {
   try {
-    // Connect to database
+    // Connect to both databases
     await connectDB();
+
+    // ✅ MongoDB is already connected in app.ts
 
     // Start server
     const server = app.listen(PORT, () => {
@@ -35,7 +36,11 @@ const startServer = async (): Promise<void> => {
       // Close server
       server.close(async () => {
         console.log('📴 HTTP server closed');
-        await disconnectDB();
+        
+        // Disconnect both databases
+        await disconnectDB();         
+       
+        
         process.exit(0);
       });
 

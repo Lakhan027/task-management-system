@@ -1,30 +1,24 @@
 import mongoose, { Schema } from 'mongoose';
-import { IActivityLog } from '../../types/activityLog.js';
-
-const ActivityLogSchema = new Schema<IActivityLog>(
-  {
+const ActivityLogSchema = new Schema({
     userId: { type: Number, required: true },
     action: {
-      type: String,
-      enum: ['create', 'update', 'delete', 'assign', 'comment', 'status_change', 'complete'],
-      required: true,
+        type: String,
+        enum: ['create', 'update', 'delete', 'assign', 'comment', 'status_change', 'complete'],
+        required: true,
     },
     resourceType: {
-      type: String,
-      enum: ['task', 'project', 'comment', 'subtask'],
-      required: true,
+        type: String,
+        enum: ['task', 'project', 'comment', 'subtask'],
+        required: true,
     },
     resourceId: { type: String, required: true },
     changes: { type: Schema.Types.Mixed, default: {} },
     ipAddress: { type: String },
     userAgent: { type: String },
     timestamp: { type: Date, default: Date.now },
-  },
-  { timestamps: false }
-);
-
+}, { timestamps: false });
 ActivityLogSchema.index({ userId: 1, timestamp: -1 });
 ActivityLogSchema.index({ resourceType: 1, resourceId: 1 });
 ActivityLogSchema.index({ action: 1, timestamp: -1 });
-
-export default mongoose.model<IActivityLog>('ActivityLog', ActivityLogSchema);
+// ✅ Export the model – .save() will work when you call it on an instance
+export default mongoose.model('ActivityLog', ActivityLogSchema);

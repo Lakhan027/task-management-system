@@ -1,5 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
-import { IActivityLog } from '../../types/activityLog.js';
+import { IActivityLog } from '../types/activityLog.js';
+
 
 const ActivityLogSchema = new Schema<IActivityLog>(
   {
@@ -27,4 +28,5 @@ ActivityLogSchema.index({ userId: 1, timestamp: -1 });
 ActivityLogSchema.index({ resourceType: 1, resourceId: 1 });
 ActivityLogSchema.index({ action: 1, timestamp: -1 });
 
+// ✅ Export the model – .save() will work when you call it on an instance
 export default mongoose.model<IActivityLog>('ActivityLog', ActivityLogSchema);

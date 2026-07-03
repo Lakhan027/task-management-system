@@ -1,32 +1,31 @@
-import mongoose from 'mongoose';
-import prisma from './prisma.js';
-import { connectMongoDB } from './db.mongodb.js';
+import { connectPostgreSQL, disconnectPostgreSQL } from './db.postgresql.js';
+import { connectMongoDB, disconnectMongoDB } from './db.mongodb.js';
+/**
+ * Connect to both PostgreSQL and MongoDB
+ */
 export const connectDB = async () => {
-    // Connect to MongoDB
-    await connectMongoDB();
-    // Connect to PostgreSQL via Prisma
     try {
-        await prisma.$connect();
-        console.log('✅ PostgreSQL (Prisma) connected successfully');
+        // Connect PostgreSQL
+        await connectPostgreSQL();
+        // Connect MongoDB
+        await connectMongoDB();
+        console.log('✅ All databases connected successfully');
     }
     catch (error) {
-        console.error('❌ PostgreSQL connection error:', error.message);
+        console.error('❌ Database connection failed:', error);
         throw error;
     }
 };
+/**
+ * Disconnect from both databases
+ */
 export const disconnectDB = async () => {
     try {
-        await mongoose.connection.close();
-        console.log('📴 MongoDB connection closed');
+        await disconnectPostgreSQL();
+        await disconnectMongoDB();
+        console.log('✅ All databases disconnected successfully');
     }
     catch (error) {
-        console.error('❌ MongoDB disconnection error:', error.message);
-    }
-    try {
-        await prisma.$disconnect();
-        console.log('📴 PostgreSQL (Prisma) connection closed');
-    }
-    catch (error) {
-        console.error('❌ PostgreSQL disconnection error:', error.message);
+        console.error('❌ Error disconnecting databases:', error);
     }
 };

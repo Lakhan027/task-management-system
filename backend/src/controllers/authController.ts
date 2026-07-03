@@ -2,90 +2,232 @@
 import { Request, Response, NextFunction } from 'express';
 import authService from '../services/authService.js';
 
-/**
- * Auth Controller - Handles HTTP requests for authentication
- */
-export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+class AuthController {
+  /**
+   * Register a new user
+   * POST /api/auth/register
+   */
+  register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { name, email, password } = req.body;
+
+      const result = await authService.register({ name, email, password });
+
+      res.status(201).json({
+        success: true,
+        message: 'User registered successfully',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Login user
+   * POST /api/auth/login
+   */
+  login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { email, password } = req.body;
+
+      const result = await authService.login({ email, password });
+
+      this.setAuthCookie(res, result.token);
+
+      res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        data: {
+          user: result.user,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Refresh JWT token
+   * POST /api/auth/refresh-token
+   */
+  refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const token = this.extractToken(req);
+
+      if (!token) {
+        res.status(401).json({
+          success: false,
+          message: 'No token provided',
+        });
+        return;
+      }
+
+      const result = await authService.refreshToken(token);
+
+      this.setAuthCookie(res, result.token);
+
+      res.status(200).json({
+        success: true,
+        message: 'Token refreshed successfully',
+        data: {
+          user: result.user,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Logout user - clear cookie and blacklist token
+   * POST /api/auth/logout
+   */
+ logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { name, email, password } = req.body;
+    const token = (req as any).token;   // ✅ use attached token
+    const userId = req.user?.id;
 
-    const result = await authService.register({ name, email, password });
+    if (!token || !userId) {
+      res.status(401).json({
+        success: false,
+        message: 'User not authenticated or token missing',
+      });
+      return;
+    }
 
-    res.status(201).json({
-      success: true,
-      message: 'User registered successfully',
-      data: result,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const { email, password } = req.body;
-
-    const result = await authService.login({ email, password });
+    await authService.logout(token, userId);
+    this.clearAuthCookie(res);
 
     res.status(200).json({
       success: true,
-      message: 'Login successful',
-      data: result,
+      message: 'Logged out successfully',
     });
   } catch (error) {
     next(error);
   }
 };
 
-export const getMe = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    // Get user from token (will be set by auth middleware)
-    const userId = (req as any).user?.id;
+  /**
+   * Logout from all devices - clear all sessions
+   * POST /api/auth/logout-all
+   */
+  logoutAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user?.id;
 
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: 'Not authenticated',
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'Not authenticated',
+        });
+        return;
+      }
+
+      await authService.logoutAll(userId);
+      this.clearAuthCookie(res);
+
+      res.status(200).json({
+        success: true,
+        message: 'Logged out from all devices successfully',
       });
+    } catch (error) {
+      next(error);
     }
+  };
 
-    const user = await authService.getCurrentUser(userId);
+  /**
+   * Get current user profile
+   * GET /api/auth/me
+   */
+  getMe = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user?.id;
 
-    res.status(200).json({
-      success: true,
-      data: user,
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'Not authenticated',
+        });
+        return;
+      }
+
+      const user = await authService.getCurrentUser(userId);
+
+      res.status(200).json({
+        success: true,
+        data: user,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Change user password
+   * POST /api/auth/change-password
+   */
+  changePassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user?.id;
+      const { oldPassword, newPassword } = req.body;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'Not authenticated',
+        });
+        return;
+      }
+
+      if (!oldPassword || !newPassword) {
+        res.status(400).json({
+          success: false,
+          message: 'Old password and new password are required',
+        });
+        return;
+      }
+
+      const result = await authService.changePassword(userId, oldPassword, newPassword);
+
+      res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ==================== PRIVATE HELPERS ====================
+
+private setAuthCookie(res: Response, token: string): void {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  // For development on localhost: secure false, lax works if using proxy.
+  // For production (HTTPS): secure true, none for cross-site.
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: isProduction, // false in development (http)
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    // If you really need cross-origin in dev, you'll need to handle it differently
+    // and likely use a proxy, because http + sameSite=none is blocked by browsers.
+  });
+}
+
+  private clearAuthCookie(res: Response): void {
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     });
-  } catch (error) {
-    next(error);
   }
-};
 
-export const changePassword = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const userId = (req as any).user?.id;
-    const { oldPassword, newPassword } = req.body;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: 'Not authenticated',
-      });
-    }
-
-    if (!oldPassword || !newPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'Old password and new password are required',
-      });
-    }
-
-    const result = await authService.changePassword(userId, oldPassword, newPassword);
-
-    res.status(200).json({
-      success: true,
-      message: result.message,
-    });
-  } catch (error) {
-    next(error);
+  private extractToken(req: Request): string | null {
+    console.log('Extracting token from request...',req.cookies?.token, req.headers.authorization?.split(' ')[1]);
+    return req.cookies?.token || req.headers.authorization?.split(' ')[1] || null;
   }
-};
+}
+
+export default new AuthController();

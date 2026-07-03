@@ -13,10 +13,10 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 // Import routes
 import routes from './routes/index.js';
 
-
-
 // Import config
 import prisma from './config/prisma.js';
+
+
 
 // Setup __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -41,7 +41,11 @@ app.use(logger);
 
 // CORS
 app.use((req: Request, res: Response, next: NextFunction) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const allowedOrigin = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:5173';
+
+  res.header('Access-Control-Allow-Origin', allowedOrigin);
+  res.header('Vary', 'Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   if (req.method === 'OPTIONS') {
@@ -50,6 +54,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   }
   next();
 });
+
+
+// ─────────────────────────────────────────────────────────────
+// DATABASE CONNECTIONS (Connect both databases)
+// ─────────────────────────────────────────────────────────────
+
 
 // ─────────────────────────────────────────────────────────────
 // ROUTES

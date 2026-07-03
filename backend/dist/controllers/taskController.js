@@ -1,1 +1,99 @@
-export {};
+import { TaskService } from '../services/taskService.js';
+const taskService = new TaskService();
+export class TaskController {
+    /**
+     * POST /api/tasks
+     * Create a new task
+     */
+    async createTask(req, res) {
+        console.log('Received request to create task:');
+        const userId = req.user.id;
+        const taskData = req.body;
+        // Basic validation
+        if (!taskData.title) {
+            return res.status(400).json({ error: 'Task title is required' });
+        }
+        if (!taskData.assignedTo) {
+            return res.status(400).json({ error: 'Task must be assigned to someone' });
+        }
+        const task = await taskService.createTask(taskData, userId);
+        res.status(201).json({ message: 'Task created successfully', task });
+    }
+    /**
+     * GET /api/tasks
+     * Get all tasks with filters & pagination
+     */
+    async getTasks(req, res) {
+        const userId = req.user.id;
+        const filters = req.query;
+        const result = await taskService.getTasks(userId, filters);
+        res.json(result);
+    }
+    /**
+     * GET /api/tasks/:id
+     * Get a single task by ID
+     */
+    async getTask(req, res) {
+        const userId = req.user.id;
+        const { id } = req.params;
+        const task = await taskService.getTaskById(id, userId);
+        res.json(task);
+    }
+    /**
+     * PUT /api/tasks/:id
+     * Update a task
+     */
+    async updateTask(req, res) {
+        const userId = req.user.id;
+        const { id } = req.params;
+        const task = await taskService.updateTask(id, req.body, userId);
+        res.json({ message: 'Task updated successfully', task });
+    }
+    /**
+     * PATCH /api/tasks/:id/status
+     * Update task status
+     */
+    async updateStatus(req, res) {
+        const userId = req.user.id;
+        const { id } = req.params;
+        const { status } = req.body;
+        if (!status) {
+            return res.status(400).json({ error: 'Status is required' });
+        }
+        const task = await taskService.updateStatus(id, status, userId);
+        res.json({ message: 'Task status updated successfully', task });
+    }
+    /**
+     * DELETE /api/tasks/:id
+     * Delete a task
+     */
+    async deleteTask(req, res) {
+        const userId = req.user.id;
+        const { id } = req.params;
+        const result = await taskService.deleteTask(id, userId);
+        res.json(result);
+    }
+    /**
+     * POST /api/tasks/:id/comments
+     * Add a comment to a task
+     */
+    async addComment(req, res) {
+        const userId = req.user.id;
+        const { id } = req.params;
+        const { text } = req.body;
+        if (!text) {
+            return res.status(400).json({ error: 'Comment text is required' });
+        }
+        const task = await taskService.addComment(id, userId, text);
+        res.json({ message: 'Comment added successfully', task });
+    }
+    /**
+     * GET /api/tasks/stats
+     * Get task statistics for the authenticated user
+     */
+    async getStats(req, res) {
+        const userId = req.user.id;
+        const stats = await taskService.getTaskStats(userId);
+        res.json(stats);
+    }
+}

@@ -1,6 +1,8 @@
 // src/routes/authRoutes.ts
 import express from "express";
-import { register, login, getMe } from "../controllers/authController.js";
+
+import { authenticate, optionalAuthenticate, authorize } from "../middleware/authMiddleware.js";
+import authController from "../controllers/authController.js";
 
 const router = express.Router();
 
@@ -39,7 +41,7 @@ const router = express.Router();
  *       400:
  *         description: Validation error
  */
-router.post("/register", register);
+router.post("/register", authController.register);
 
 /**
  * @swagger
@@ -72,9 +74,121 @@ router.post("/register", register);
  *       401:
  *         description: Invalid email or password
  */
-router.post("/login", login);
+router.post("/login", authController.login);
 
+/**
+ * @swagger
+ * /auth/refresh-token:
+ *   post:
+ *     summary: Refresh JWT token
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: eyJhbGciOiJIUzI1NiIs...
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *       401:
+ *         description: Invalid or expired token
+ */
+router.post("/refresh-token", authController.refreshToken);
 
-router.get("/me",getMe);
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     summary: Logout user
+ *     tags:
+ *       - Authentication
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logged out successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.post("/logout", authenticate, authController.logout);
+
+/**
+ * @swagger
+ * /auth/logout-all:
+ *   post:
+ *     summary: Logout from all devices
+ *     tags:
+ *       - Authentication
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logged out from all devices successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.post("/logout-all", authenticate, authController.logoutAll);
+
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get current user profile
+ *     tags:
+ *       - Authentication
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/me", authenticate, authController.getMe);
+
+/**
+ * @swagger
+ * /auth/change-password:
+ *   post:
+ *     summary: Change user password
+ *     tags:
+ *       - Authentication
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - oldPassword
+ *               - newPassword
+ *             properties:
+ *               oldPassword:
+ *                 type: string
+ *                 format: password
+ *                 example: OldPass123
+ *               newPassword:
+ *                 type: string
+ *                 format: password
+ *                 example: NewPass123
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
+router.post("/change-password", authenticate, authController.changePassword);
 
 export default router;
