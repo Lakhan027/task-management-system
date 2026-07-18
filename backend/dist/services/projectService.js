@@ -1,3 +1,4 @@
+import { redisHelpers } from '../config/redis.js';
 import Project from '../models/mongodb/Project.js';
 export class ProjectService {
     /**
@@ -10,6 +11,8 @@ export class ProjectService {
             members: [{ userId, role: 'admin', joinedAt: new Date() }],
         });
         await project.save();
+        // ✅ Invalidate project cache
+        await redisHelpers.deletePattern('projects:*');
         return project;
     }
     /**
@@ -56,6 +59,8 @@ export class ProjectService {
         Object.assign(project, updates);
         project.updatedAt = new Date();
         await project.save();
+        // ✅ Invalidate project cache
+        await redisHelpers.deletePattern('projects:*');
         return project;
     }
     /**
@@ -67,6 +72,8 @@ export class ProjectService {
             throw new Error('Only the owner can delete this project');
         }
         await project.deleteOne();
+        // ✅ Invalidate project cache
+        await redisHelpers.deletePattern('projects:*');
         return { message: 'Project deleted successfully' };
     }
     /**
@@ -86,6 +93,8 @@ export class ProjectService {
         }
         project.members.push({ userId: memberUserId, role, joinedAt: new Date() });
         await project.save();
+        // ✅ Invalidate project cache
+        await redisHelpers.deletePattern('projects:*');
         return project;
     }
     /**
@@ -101,6 +110,8 @@ export class ProjectService {
         }
         project.members = project.members.filter((m) => m.userId !== memberUserId);
         await project.save();
+        // ✅ Invalidate project cache
+        await redisHelpers.deletePattern('projects:*');
         return project;
     }
 }

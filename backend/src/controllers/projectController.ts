@@ -26,7 +26,7 @@ export class ProjectController {
     }
 
     const project = await projectService.createProject(projectData, userId);
-    res.status(201).json({ message: 'Project created successfully', project });
+    res.status(201).json(project);
   }
 
   /**
@@ -61,7 +61,7 @@ export class ProjectController {
     const userId = (req as any).user.id;
     const { id } = req.params;
     const project = await projectService.updateProject(id, req.body, userId);
-    res.json({ message: 'Project updated successfully', project });
+    res.json(project);
   }
 
   /**
@@ -97,7 +97,7 @@ export class ProjectController {
       memberUserId,
       role
     );
-    res.json({ message: 'Member added successfully', project });
+    res.json(project);
   }
 
   /**
@@ -117,6 +117,6 @@ export class ProjectController {
     }
 
     const project = await projectService.removeMember(id, userId, memberUserId);
-    res.json({ message: 'Member removed successfully', project });
+    res.json(project);
   }
 }

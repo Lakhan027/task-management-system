@@ -14,16 +14,11 @@ export const connectRedis = async (): Promise<void> => {
       return;
     }
 
-    // Parse the URL to extract host and token
-    // For Upstash: rediss://default:TOKEN@HOST:6379
-    const url = new URL(redisUrl);
-    const password = url.password; // The token
-    
     redisClient = createClient({
       url: redisUrl,
       socket: {
-        tls: true, // ✅ Enable TLS for Upstash
-        rejectUnauthorized: false, // For development
+        tls: true,
+        rejectUnauthorized: false,
         reconnectStrategy: (retries) => {
           if (retries > 5) {
             console.warn('⚠️ Redis: Max reconnection attempts reached.');
@@ -90,18 +85,36 @@ export const isRedisConnected = (): boolean => {
  * Redis helpers (with fallback)
  */
 export const redisHelpers = {
+  /**
+   * Get cached data with type checking
+   */
   async get<T>(key: string): Promise<T | null> {
     if (!isRedisConnected()) return null;
     try {
-      const data = await redisClient!.get(key);
-      if (!data) return null;
-      return JSON.parse(data) as T;
+      const type = await redisClient!.type(key);
+      
+      if (type === 'string') {
+        const data = await redisClient!.get(key);
+        if (!data) return null;
+        return JSON.parse(data) as T;
+      }
+      
+      // If it's a different type, delete it
+      if (type !== 'none') {
+        console.warn(`⚠️ Key "${key}" is type "${type}", not string. Deleting...`);
+        await redisClient!.del(key);
+      }
+      
+      return null;
     } catch (error) {
       console.error('Redis get error:', error);
       return null;
     }
   },
 
+  /**
+   * Set cached data with TTL
+   */
   async set(key: string, value: any, ttlSeconds?: number): Promise<void> {
     if (!isRedisConnected()) return;
     try {
@@ -113,6 +126,9 @@ export const redisHelpers = {
     }
   },
 
+  /**
+   * Delete a single key
+   */
   async delete(key: string): Promise<void> {
     if (!isRedisConnected()) return;
     try {
@@ -122,18 +138,32 @@ export const redisHelpers = {
     }
   },
 
+  /**
+   * Delete all keys matching a pattern using SCAN
+   */
   async deletePattern(pattern: string): Promise<void> {
     if (!isRedisConnected()) return;
     try {
-      const keys = await redisClient!.keys(pattern);
-      if (keys.length > 0) {
-        await redisClient!.del(keys);
+      let cursor = 0;
+      const keysToDelete: string[] = [];
+      
+      do {
+        const result = await redisClient!.scan(String(cursor), { MATCH: pattern, COUNT: 100 });
+        cursor = Number(result.cursor);
+        keysToDelete.push(...result.keys);
+      } while (cursor !== 0);
+      
+      if (keysToDelete.length > 0) {
+        await redisClient!.del(keysToDelete);
       }
     } catch (error) {
       console.error('Redis deletePattern error:', error);
     }
   },
 
+  /**
+   * Increment a counter (for rate limiting)
+   */
   async increment(key: string, ttlSeconds?: number): Promise<number> {
     if (!isRedisConnected()) return 0;
     try {
@@ -148,6 +178,9 @@ export const redisHelpers = {
     }
   },
 
+  /**
+   * Get remaining TTL for a key
+   */
   async getTTL(key: string): Promise<number> {
     if (!isRedisConnected()) return -1;
     try {
@@ -157,6 +190,9 @@ export const redisHelpers = {
     }
   },
 
+  /**
+   * Check if a key exists
+   */
   async exists(key: string): Promise<boolean> {
     if (!isRedisConnected()) return false;
     try {
@@ -166,15 +202,51 @@ export const redisHelpers = {
     }
   },
 
+  /**
+   * Get all keys matching a pattern using SCAN
+   */
   async keys(pattern: string): Promise<string[]> {
     if (!isRedisConnected()) return [];
     try {
-      return await redisClient!.keys(pattern);
+      let cursor = 0;
+      const allKeys: string[] = [];
+      
+      do {
+        const result = await redisClient!.scan(String(cursor), { MATCH: pattern, COUNT: 100 });
+        cursor = Number(result.cursor);
+        allKeys.push(...result.keys);
+      } while (cursor !== 0);
+      
+      return allKeys;
     } catch (error) {
+      console.error('Redis keys error:', error);
       return [];
     }
   },
 
+  /**
+   * Get the type of a Redis key
+   */
+  async getType(key: string): Promise<string | null> {
+    if (!isRedisConnected()) return null;
+    try {
+      return await redisClient!.type(key);
+    } catch (error) {
+      console.error('Redis getType error:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Check if Redis is connected
+   */
+  isConnected(): boolean {
+    return isRedisConnected();
+  },
+
+  /**
+   * Flush all Redis data (use with caution!)
+   */
   async flushAll(): Promise<void> {
     if (!isRedisConnected()) return;
     try {

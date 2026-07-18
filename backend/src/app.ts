@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./config/swagger.js";
+import cookieParser from 'cookie-parser';
 
 // Import middleware
 import { logger } from './middleware/logger.js';
@@ -36,18 +37,32 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Cookie parser
+app.use(cookieParser()); // ✅ Add this line
+
 // Logging
 app.use(logger);
 
 // CORS
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const allowedOrigin = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:5173';
+// CORS
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:3000',
+  'http://localhost:5173',
+].filter(Boolean);
 
-  res.header('Access-Control-Allow-Origin', allowedOrigin);
-  res.header('Vary', 'Origin');
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const origin = req.headers.origin;
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Vary', 'Origin');
+  }
+  
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
   if (req.method === 'OPTIONS') {
     res.sendStatus(200);
     return;

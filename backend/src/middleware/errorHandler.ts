@@ -1,4 +1,3 @@
-// src/middleware/errorHandler.ts
 import { Request, Response, NextFunction } from 'express';
 
 export class AppError extends Error {
@@ -13,10 +12,12 @@ export class AppError extends Error {
   }
 }
 
-/**
- * Global error handler
- */
-export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction): void => {
+export const errorHandler = (
+  err: any,
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
   console.error('❌ Error:', err);
 
   // Handle Prisma errors
@@ -28,16 +29,14 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal server error';
 
+  // ✅ Standardized error response
   res.status(statusCode).json({
     success: false,
     message: message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };
 
-/**
- * Handle Prisma-specific errors
- */
 const handlePrismaError = (err: any, res: Response): void => {
   const errorMap: Record<string, { status: number; message: string }> = {
     P2002: { status: 409, message: 'Duplicate entry' },
@@ -48,6 +47,7 @@ const handlePrismaError = (err: any, res: Response): void => {
 
   const error = errorMap[err.code] || { status: 500, message: 'Database error' };
 
+  // ✅ Standardized error response
   res.status(error.status).json({
     success: false,
     message: error.message,
@@ -55,9 +55,6 @@ const handlePrismaError = (err: any, res: Response): void => {
   });
 };
 
-/**
- * 404 Not Found handler
- */
 export const notFound = (req: Request, res: Response): void => {
   res.status(404).json({
     success: false,

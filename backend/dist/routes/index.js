@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authRoutes from './authRoutes.js';
 import taskRoutes from './taskRoutes.js';
 import projectRoutes from './projectRoutes.js';
+import dashboardRoutes from './dashboardRoutes.js';
 const router = Router();
 // Health check
 router.get('/', (req, res) => {
@@ -13,6 +14,7 @@ router.get('/', (req, res) => {
             auth: '/api/auth',
             tasks: '/api/tasks',
             projects: '/api/projects',
+            dashboard: '/api/dashboard',
             docs: '/api-docs',
         },
     });
@@ -21,4 +23,5 @@ router.get('/', (req, res) => {
 router.use('/auth', authRoutes);
 router.use('/tasks', taskRoutes);
 router.use('/projects', projectRoutes);
+router.use('/dashboard', dashboardRoutes);
 export default router;

@@ -1,5 +1,6 @@
 import Task from '../models/mongodb/Task.js';
 import ActivityLog from '../models/mongodb/ActivityLog.js';
+import redisHelpers from '../config/redis.js';
 export class TaskService {
     /**
      * Create a new task
@@ -26,6 +27,10 @@ export class TaskService {
             resourceId: task._id.toString(),
             changes: { task: data },
         });
+        //invalidate cache for task list and stats after creating a new task
+        await redisHelpers.deletePattern('tasks:list:*');
+        await redisHelpers.deletePattern('tasks:stats:*');
+        await redisHelpers.deletePattern(`tasks:detail:*`);
         return task;
     }
     /**
@@ -116,6 +121,11 @@ export class TaskService {
                 changes,
             });
         }
+        // ✅ Invalidate related caches
+        await redisHelpers.deletePattern('tasks:list:*');
+        await redisHelpers.deletePattern('tasks:stats:*');
+        await redisHelpers.deletePattern(`tasks:detail:*`);
+        await redisHelpers.delete(`tasks:detail:${taskId}`);
         return task;
     }
     /**
@@ -144,6 +154,10 @@ export class TaskService {
                 status: { from: oldStatus, to: newStatus },
             },
         });
+        // ✅ Invalidate related caches
+        await redisHelpers.deletePattern('tasks:list:*');
+        await redisHelpers.deletePattern('tasks:stats:*');
+        await redisHelpers.delete(`tasks:detail:${taskId}`);
         return task;
     }
     /**
@@ -162,6 +176,8 @@ export class TaskService {
             resourceId: taskId,
             changes: { deleted: task },
         });
+        // ✅ Invalidate all task caches
+        await redisHelpers.deletePattern('tasks:*');
         return { message: 'Task deleted successfully' };
     }
     /**
@@ -183,6 +199,8 @@ export class TaskService {
             resourceId: task._id.toString(),
             changes: { comment: text },
         });
+        // ✅ Invalidate related caches
+        await redisHelpers.delete(`tasks:detail:${taskId}`);
         return task;
     }
     /**

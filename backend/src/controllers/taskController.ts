@@ -28,7 +28,7 @@ export class TaskController {
     }
 
     const task = await taskService.createTask(taskData, userId);
-    res.status(201).json({ message: 'Task created successfully', task });
+    res.status(201).json(task);
   }
 
   /**
@@ -64,7 +64,7 @@ export class TaskController {
     const userId = (req as any).user.id;
     const { id } = req.params;
     const task = await taskService.updateTask(id, req.body, userId);
-    res.json({ message: 'Task updated successfully', task });
+    res.json(task);
   }
 
   /**
@@ -84,7 +84,7 @@ export class TaskController {
     }
 
     const task = await taskService.updateStatus(id, status, userId);
-    res.json({ message: 'Task status updated successfully', task });
+    res.json(task);
   }
 
   /**
@@ -115,7 +115,7 @@ export class TaskController {
     }
 
     const task = await taskService.addComment(id, userId, text);
-    res.json({ message: 'Comment added successfully', task });
+    res.json(task);
   }
 
   /**

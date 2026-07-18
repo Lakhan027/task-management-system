@@ -8,9 +8,6 @@ export class AppError extends Error {
         Error.captureStackTrace(this, this.constructor);
     }
 }
-/**
- * Global error handler
- */
 export const errorHandler = (err, req, res, next) => {
     console.error('❌ Error:', err);
     // Handle Prisma errors
@@ -20,15 +17,13 @@ export const errorHandler = (err, req, res, next) => {
     }
     const statusCode = err.statusCode || 500;
     const message = err.message || 'Internal server error';
+    // ✅ Standardized error response
     res.status(statusCode).json({
         success: false,
         message: message,
-        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
     });
 };
-/**
- * Handle Prisma-specific errors
- */
 const handlePrismaError = (err, res) => {
     const errorMap = {
         P2002: { status: 409, message: 'Duplicate entry' },
@@ -37,15 +32,13 @@ const handlePrismaError = (err, res) => {
         P2003: { status: 400, message: 'Foreign key constraint failed' },
     };
     const error = errorMap[err.code] || { status: 500, message: 'Database error' };
+    // ✅ Standardized error response
     res.status(error.status).json({
         success: false,
         message: error.message,
         code: err.code,
     });
 };
-/**
- * 404 Not Found handler
- */
 export const notFound = (req, res) => {
     res.status(404).json({
         success: false,

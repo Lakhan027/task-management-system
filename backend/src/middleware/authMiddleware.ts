@@ -8,6 +8,7 @@ export interface AuthRequest extends Request {
   user: {
     id: number;
     email: string;
+    role: string;
     iat?: number;
     exp?: number;
   };
@@ -66,6 +67,7 @@ export const authenticate = async (
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
       id: number;
       email: string;
+      role: string;
       iat: number;
       exp: number;
     };
@@ -76,6 +78,7 @@ export const authenticate = async (
     (req as AuthRequest).user = {
       id: decoded.id,
       email: decoded.email,
+      role: decoded.role,
       iat: decoded.iat,
       exp: decoded.exp,
     };
@@ -134,6 +137,7 @@ export const optionalAuthenticate = async (
           const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
             id: number;
             email: string;
+            role: string;
           };
           (req as AuthRequest).user = decoded;
         }
@@ -164,16 +168,13 @@ export const authorize = (roles: string[]) => {
       return;
     }
 
-    // If roles are specified, check if user has required role
-    // Note: You need to add 'role' field to your user model and JWT payload
-    // For now, this is a placeholder
-    // if (roles.length > 0 && !roles.includes(user.role)) {
-    //   res.status(403).json({
-    //     success: false,
-    //     message: "Forbidden - Insufficient permissions",
-    //   });
-    //   return;
-    // }
+    if (roles.length > 0 && !roles.includes(user.role)) {
+      res.status(403).json({
+        success: false,
+        message: "Forbidden - Insufficient permissions",
+      });
+      return;
+    }
 
     next();
   };

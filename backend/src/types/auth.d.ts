@@ -2,6 +2,7 @@ export interface UserRegisterInput {
   name?: string;
   email?: string;
   password?: string;
+  role?: string;
 }
 
 export interface UserLoginInput {
@@ -13,6 +14,7 @@ export interface UserResponse {
   id: number;
   name: string;
   email: string;
+  role: string;
   createdAt: Date;
 }
 

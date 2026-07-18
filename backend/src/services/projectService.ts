@@ -1,3 +1,4 @@
+import { redisHelpers } from '../config/redis.js';
 import Project from '../models/mongodb/Project.js';
 import {
   CreateProjectRequest,
@@ -22,6 +23,10 @@ export class ProjectService {
     });
 
     await project.save();
+
+     // ✅ Invalidate project cache
+  await redisHelpers.deletePattern('projects:*');
+
     return project;
   }
 
@@ -82,6 +87,10 @@ export class ProjectService {
     project.updatedAt = new Date();
     await project.save();
 
+
+     // ✅ Invalidate project cache
+     await redisHelpers.deletePattern('projects:*');
+
     return project;
   }
 
@@ -95,6 +104,9 @@ export class ProjectService {
     }
 
     await project.deleteOne();
+
+    // ✅ Invalidate project cache
+    await redisHelpers.deletePattern('projects:*');
     return { message: 'Project deleted successfully' };
   }
 
@@ -124,6 +136,10 @@ export class ProjectService {
 
     project.members.push({ userId: memberUserId, role, joinedAt: new Date() });
     await project.save();
+
+
+    // ✅ Invalidate project cache
+  await redisHelpers.deletePattern('projects:*');
     return project;
   }
 
@@ -147,6 +163,9 @@ export class ProjectService {
 
     project.members = project.members.filter((m: any) => m.userId !== memberUserId);
     await project.save();
+
+    // ✅ Invalidate project cache
+  await redisHelpers.deletePattern('projects:*');
     return project;
   }
 }

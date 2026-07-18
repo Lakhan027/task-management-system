@@ -53,11 +53,13 @@ class AuthService implements IAuthService {
         name,
         email,
         password: hashedPassword,
+        role: "user",
       },
       select: {
         id: true,
         name: true,
         email: true,
+        role: true,
         createdAt: true,
       },
     });
@@ -105,6 +107,7 @@ class AuthService implements IAuthService {
     const token = generateToken({
       id: user.id,
       email: user.email,
+      role: user.role,
     });
 
     // Cache user profile in Redis for faster access
@@ -114,6 +117,7 @@ class AuthService implements IAuthService {
         id: user.id,
         name: user.name,
         email: user.email,
+        role: user.role,  
         createdAt: user.createdAt,
       },
       3600 // Cache for 1 hour
@@ -125,6 +129,7 @@ class AuthService implements IAuthService {
         id: user.id,
         name: user.name,
         email: user.email,
+        role: user.role,
         createdAt: user.createdAt,
       },
     };
@@ -197,6 +202,7 @@ class AuthService implements IAuthService {
       const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { 
         id: number; 
         email: string;
+        role: string;
         iat: number;
         exp: number;
       };
@@ -208,6 +214,7 @@ class AuthService implements IAuthService {
           id: true,
           name: true,
           email: true,
+          role: true,
           createdAt: true,
         },
       });
@@ -223,6 +230,7 @@ class AuthService implements IAuthService {
       const newToken = generateToken({
         id: user.id,
         email: user.email,
+        role: user.role,
       });
 
       // Blacklist the old token to prevent reuse
@@ -275,6 +283,7 @@ class AuthService implements IAuthService {
         id: true,
         name: true,
         email: true,
+        role: true,
         createdAt: true,
       },
     });

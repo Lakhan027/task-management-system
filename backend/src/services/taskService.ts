@@ -227,6 +227,9 @@ export class TaskService {
       changes: { deleted: task },
     });
 
+     // ✅ Invalidate all task caches
+     await redisHelpers.deletePattern('tasks:*');
+
     return { message: 'Task deleted successfully' };
   }
 

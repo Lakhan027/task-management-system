@@ -6,20 +6,37 @@ import { connectRedis, disconnectRedis } from './redis.js';
  * Connect to both PostgreSQL and MongoDB
  */
 export const connectDB = async (): Promise<void> => {
-  try {
-    // Connect PostgreSQL
-    await connectPostgreSQL();
-    
-    // Connect MongoDB
-    await connectMongoDB();
+  const errors: string[] = [];
 
-    // Connect Redis (optional)
+  try {
+    await connectPostgreSQL();
+    console.log('✅ PostgreSQL connected');
+  } catch (error: any) {
+    errors.push(`PostgreSQL: ${error.message}`);
+  }
+
+  try {
+    await connectMongoDB();
+    console.log('✅ MongoDB connected');
+  } catch (error: any) {
+    errors.push(`MongoDB: ${error.message}`);
+  }
+
+  try {
     await connectRedis();
-    
+    console.log('✅ Redis connected');
+  } catch (error: any) {
+    console.warn('⚠️ Redis not available');
+  }
+
+  if (errors.length > 0) {
+    console.error('❌ Some databases failed to connect:', errors);
+    // In production, you might want to exit if PostgreSQL fails
+    if (errors.some(e => e.includes('PostgreSQL'))) {
+      throw new Error('PostgreSQL connection failed');
+    }
+  } else {
     console.log('✅ All databases connected successfully');
-  } catch (error) {
-    console.error('❌ Database connection failed:', error);
-    throw error;
   }
 };
 

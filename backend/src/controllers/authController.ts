@@ -11,7 +11,7 @@ class AuthController {
     try {
       const { name, email, password } = req.body;
 
-      const result = await authService.register({ name, email, password });
+      const result = await authService.register({ name, email, password,  });
 
       res.status(201).json({
         success: true,
@@ -102,6 +102,7 @@ class AuthController {
     res.status(200).json({
       success: true,
       message: 'Logged out successfully',
+      data: null,
     });
   } catch (error) {
     next(error);
@@ -130,6 +131,7 @@ class AuthController {
       res.status(200).json({
         success: true,
         message: 'Logged out from all devices successfully',
+        data: null,
       });
     } catch (error) {
       next(error);
@@ -156,6 +158,7 @@ class AuthController {
 
       res.status(200).json({
         success: true,
+        message: 'User fetched successfully',
         data: user,
       });
     } catch (error) {
@@ -193,6 +196,7 @@ class AuthController {
       res.status(200).json({
         success: true,
         message: result.message,
+        data: null,
       });
     } catch (error) {
       next(error);
@@ -224,9 +228,19 @@ private setAuthCookie(res: Response, token: string): void {
     });
   }
 
+  private getCookieValue(cookieHeader: string | undefined, name: string): string | null {
+    if (!cookieHeader) {
+      return null;
+    }
+
+    const cookies = cookieHeader.split(';').map((cookie) => cookie.trim());
+    const cookie = cookies.find((item) => item.startsWith(`${name}=`));
+
+    return cookie ? decodeURIComponent(cookie.split('=')[1]) : null;
+  }
+
   private extractToken(req: Request): string | null {
-    console.log('Extracting token from request...',req.cookies?.token, req.headers.authorization?.split(' ')[1]);
-    return req.cookies?.token || req.headers.authorization?.split(' ')[1] || null;
+    return this.getCookieValue(req.headers.cookie, 'token') || req.headers.authorization?.split(' ')[1] || null;
   }
 }
 

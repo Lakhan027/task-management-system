@@ -1,9 +1,14 @@
 import app, { prisma } from './app.js';
 import { connectDB,disconnectDB } from './config/database.js';
+import { validateEnvironment } from './config/env.js';
 import { getPort, getEnv } from './utils/helpers.js';
 
 const PORT = getPort();
 const ENV = getEnv();
+
+
+// At the start of startServer()
+validateEnvironment();
 
 // START SERVER
 const startServer = async (): Promise<void> => {
