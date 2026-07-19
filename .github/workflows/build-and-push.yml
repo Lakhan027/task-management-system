@@ -6,7 +6,7 @@ on:
 
 env:
   IMAGE_REGISTRY: ghcr.io
-  IMAGE_REPO: ghcr.io/<org>/task-management
+  IMAGE_REPO: ghcr.io/lakhan027/task-management
 
 jobs:
   build-and-push:
