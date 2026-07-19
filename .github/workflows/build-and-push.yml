@@ -13,8 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+
       - name: Set up QEMU (for multi-platform builds)
         uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -47,17 +49,20 @@ jobs:
             ${{ env.IMAGE_REPO }}-frontend:latest
             ${{ env.IMAGE_REPO }}-frontend:${{ github.sha }}
 
-      - name: Deploy to server via SSH (pull & restart)
-        uses: appleboy/ssh-action@v0.1.8
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            cd /path/to/deploy
-            export BACKEND_IMAGE_TAG=${{ github.sha }}
-            export FRONTEND_IMAGE_TAG=${{ github.sha }}
-            docker-compose pull
-            docker-compose up -d --no-deps backend frontend
-            # Run migrations once (optional)
-            docker-compose run --rm backend npx prisma migrate deploy
+      # -----------------------------------------------------------------
+      # Uncomment this section only when you have a VPS/server configured.
+      # -----------------------------------------------------------------
+
+      # - name: Deploy to server via SSH (pull & restart)
+      #   uses: appleboy/ssh-action@v0.1.8
+      #   with:
+      #     host: ${{ secrets.DEPLOY_HOST }}
+      #     username: ${{ secrets.DEPLOY_USER }}
+      #     key: ${{ secrets.DEPLOY_SSH_KEY }}
+      #     script: |
+      #       cd /path/to/deploy
+      #       export BACKEND_IMAGE_TAG=${{ github.sha }}
+      #       export FRONTEND_IMAGE_TAG=${{ github.sha }}
+      #       docker compose pull
+      #       docker compose up -d --no-deps backend frontend
+      #       docker compose run --rm backend npx prisma migrate deploy
