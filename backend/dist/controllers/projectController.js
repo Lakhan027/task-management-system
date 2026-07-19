@@ -12,7 +12,7 @@ export class ProjectController {
             return res.status(400).json({ error: 'Project name is required' });
         }
         const project = await projectService.createProject(projectData, userId);
-        res.status(201).json({ message: 'Project created successfully', project });
+        res.status(201).json(project);
     }
     /**
      * GET /api/projects
@@ -41,7 +41,7 @@ export class ProjectController {
         const userId = req.user.id;
         const { id } = req.params;
         const project = await projectService.updateProject(id, req.body, userId);
-        res.json({ message: 'Project updated successfully', project });
+        res.json(project);
     }
     /**
      * DELETE /api/projects/:id
@@ -65,7 +65,7 @@ export class ProjectController {
             return res.status(400).json({ error: 'Member user ID is required' });
         }
         const project = await projectService.addMember(id, userId, memberUserId, role);
-        res.json({ message: 'Member added successfully', project });
+        res.json(project);
     }
     /**
      * DELETE /api/projects/:id/members
@@ -79,6 +79,6 @@ export class ProjectController {
             return res.status(400).json({ error: 'Member user ID is required' });
         }
         const project = await projectService.removeMember(id, userId, memberUserId);
-        res.json({ message: 'Member removed successfully', project });
+        res.json(project);
     }
 }

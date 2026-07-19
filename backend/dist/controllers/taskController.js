@@ -17,7 +17,7 @@ export class TaskController {
             return res.status(400).json({ error: 'Task must be assigned to someone' });
         }
         const task = await taskService.createTask(taskData, userId);
-        res.status(201).json({ message: 'Task created successfully', task });
+        res.status(201).json(task);
     }
     /**
      * GET /api/tasks
@@ -47,7 +47,7 @@ export class TaskController {
         const userId = req.user.id;
         const { id } = req.params;
         const task = await taskService.updateTask(id, req.body, userId);
-        res.json({ message: 'Task updated successfully', task });
+        res.json(task);
     }
     /**
      * PATCH /api/tasks/:id/status
@@ -61,7 +61,7 @@ export class TaskController {
             return res.status(400).json({ error: 'Status is required' });
         }
         const task = await taskService.updateStatus(id, status, userId);
-        res.json({ message: 'Task status updated successfully', task });
+        res.json(task);
     }
     /**
      * DELETE /api/tasks/:id
@@ -85,7 +85,7 @@ export class TaskController {
             return res.status(400).json({ error: 'Comment text is required' });
         }
         const task = await taskService.addComment(id, userId, text);
-        res.json({ message: 'Comment added successfully', task });
+        res.json(task);
     }
     /**
      * GET /api/tasks/stats

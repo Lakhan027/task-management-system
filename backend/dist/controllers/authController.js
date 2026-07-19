@@ -87,6 +87,7 @@ class AuthController {
             res.status(200).json({
                 success: true,
                 message: 'Logged out successfully',
+                data: null,
             });
         }
         catch (error) {
@@ -112,6 +113,7 @@ class AuthController {
             res.status(200).json({
                 success: true,
                 message: 'Logged out from all devices successfully',
+                data: null,
             });
         }
         catch (error) {
@@ -135,6 +137,7 @@ class AuthController {
             const user = await authService.getCurrentUser(userId);
             res.status(200).json({
                 success: true,
+                message: 'User fetched successfully',
                 data: user,
             });
         }
@@ -168,6 +171,7 @@ class AuthController {
             res.status(200).json({
                 success: true,
                 message: result.message,
+                data: null,
             });
         }
         catch (error) {
