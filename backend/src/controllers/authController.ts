@@ -1,6 +1,7 @@
 // src/controllers/authController.ts
 import { Request, Response, NextFunction } from 'express';
 import authService from '../services/authService.js';
+import { generateToken } from '../utils/jwt.js';
 
 class AuthController {
   /**
@@ -11,12 +12,19 @@ class AuthController {
     try {
       const { name, email, password } = req.body;
 
-      const result = await authService.register({ name, email, password,  });
+      const user = await authService.register({ name, email, password });
+
+      const token = generateToken({ id: user.id, email: user.email, role: user.role });
+
+      this.setAuthCookie(res, token);
 
       res.status(201).json({
         success: true,
         message: 'User registered successfully',
-        data: result,
+        data: {
+          token,
+          user,
+        },
       });
     } catch (error) {
       next(error);

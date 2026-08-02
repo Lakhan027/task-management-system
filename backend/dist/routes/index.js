@@ -3,6 +3,7 @@ import authRoutes from './authRoutes.js';
 import taskRoutes from './taskRoutes.js';
 import projectRoutes from './projectRoutes.js';
 import dashboardRoutes from './dashboardRoutes.js';
+import redisAdminRoutes from './redisAdminRoutes.js';
 const router = Router();
 // Health check
 router.get('/', (req, res) => {
@@ -24,4 +25,6 @@ router.use('/auth', authRoutes);
 router.use('/tasks', taskRoutes);
 router.use('/projects', projectRoutes);
 router.use('/dashboard', dashboardRoutes);
+// Admin Redis viewer (admin only)
+router.use('/admin/redis', redisAdminRoutes);
 export default router;

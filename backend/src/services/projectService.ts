@@ -25,7 +25,7 @@ export class ProjectService {
     await project.save();
 
      // ✅ Invalidate project cache
-  await redisHelpers.deletePattern('projects:*');
+   await redisHelpers.deletePattern('project:*');
 
     return project;
   }
@@ -89,7 +89,7 @@ export class ProjectService {
 
 
      // ✅ Invalidate project cache
-     await redisHelpers.deletePattern('projects:*');
+     await redisHelpers.deletePattern('project:*');
 
     return project;
   }
@@ -106,7 +106,7 @@ export class ProjectService {
     await project.deleteOne();
 
     // ✅ Invalidate project cache
-    await redisHelpers.deletePattern('projects:*');
+    await redisHelpers.deletePattern('project:*');
     return { message: 'Project deleted successfully' };
   }
 
@@ -139,7 +139,7 @@ export class ProjectService {
 
 
     // ✅ Invalidate project cache
-  await redisHelpers.deletePattern('projects:*');
+  await redisHelpers.deletePattern('project:*');
     return project;
   }
 
@@ -165,7 +165,7 @@ export class ProjectService {
     await project.save();
 
     // ✅ Invalidate project cache
-  await redisHelpers.deletePattern('projects:*');
+  await redisHelpers.deletePattern('project:*');
     return project;
   }
 }
