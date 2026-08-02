@@ -10,7 +10,6 @@ import {
   FolderKanban,
   User,
   Database,
-  HardDrive,
   LogOut,
   Menu,
   X,
@@ -29,7 +28,6 @@ const navItems: NavItem[] = [
   { href: '/dashboard/tasks', label: 'Tasks', icon: <ListTodo className="w-5 h-5" /> },
   { href: '/dashboard/projects', label: 'Projects', icon: <FolderKanban className="w-5 h-5" /> },
   { href: '/dashboard/learning', label: 'DB Explorer', icon: <Database className="w-5 h-5" /> },
-  { href: '/dashboard/redis', label: 'Redis', icon: <HardDrive className="w-5 h-5" /> },
   { href: '/dashboard/profile', label: 'Profile', icon: <User className="w-5 h-5" /> },
 ];
 

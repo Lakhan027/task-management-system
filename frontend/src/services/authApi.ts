@@ -4,12 +4,22 @@ import { ApiResponse, AuthResponse, LoginRequest, RegisterRequest, User } from '
 
 export const authApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    register: builder.mutation<ApiResponse<User>, RegisterRequest>({
+    register: builder.mutation<AuthResponse, RegisterRequest>({
       query: (body) => ({
         url: '/auth/register',
         method: 'POST',
         body,
       }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          if (data?.data?.user) {
+            dispatch(setUser(data.data.user));
+          }
+        } catch (error) {
+          console.error('Register error:', error);
+        }
+      },
     }),
 
     login: builder.mutation<AuthResponse, LoginRequest>({

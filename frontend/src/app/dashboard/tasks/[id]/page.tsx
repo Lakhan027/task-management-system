@@ -11,7 +11,7 @@ import {
 import TaskStatusBadge from '@/components/tasks/TaskStatusBadge';
 import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge';
 import TaskComments from '@/components/tasks/TaskComments';
-import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Loader2 } from 'lucide-react';
 
 export default function TaskDetailPage() {
   const params = useParams();
@@ -20,14 +20,29 @@ export default function TaskDetailPage() {
 
   const [status, setStatus] = useState('');
 
-  const { data: task, isLoading } = useGetTaskQuery(id);
-  const [updateStatus] = useUpdateTaskStatusMutation();
-  const [deleteTask] = useDeleteTaskMutation();
+  const { data: task, isLoading, isError } = useGetTaskQuery(id);
+  const [updateStatus, { isLoading: isUpdating }] = useUpdateTaskStatusMutation();
+  const [deleteTask, { isLoading: isDeleting }] = useDeleteTaskMutation();
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-500 mb-2">Failed to load task. It may have been deleted or you don't have access.</p>
+        <Link
+          href="/dashboard/tasks"
+          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Tasks
+        </Link>
       </div>
     );
   }
@@ -58,14 +73,17 @@ export default function TaskDetailPage() {
 
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this task?')) {
-      await deleteTask(id);
-      router.push('/dashboard/tasks');
+      try {
+        await deleteTask(id).unwrap();
+        router.push('/dashboard/tasks');
+      } catch (error) {
+        console.error('Failed to delete task:', error);
+      }
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Back Button */}
       <Link
         href="/dashboard/tasks"
         className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
@@ -74,7 +92,6 @@ export default function TaskDetailPage() {
         Back to Tasks
       </Link>
 
-      {/* Task Details */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -101,9 +118,10 @@ export default function TaskDetailPage() {
             </Link>
             <button
               onClick={handleDelete}
-              className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+              disabled={isDeleting}
+              className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Trash2 className="w-5 h-5" />
+              {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
             </button>
           </div>
         </div>
@@ -140,7 +158,8 @@ export default function TaskDetailPage() {
           <select
             value={status || task.status}
             onChange={(e) => handleStatusChange(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={isUpdating}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           >
             <option value="todo">To Do</option>
             <option value="in-progress">In Progress</option>
