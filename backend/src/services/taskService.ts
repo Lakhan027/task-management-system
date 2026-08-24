@@ -8,6 +8,7 @@ import {
   ITask,
 } from '../types/task.js';
 import redisHelpers from '../config/redis.js';
+import { trace } from '../utils/trace.js';
 
 export class TaskService {
   /**
@@ -22,6 +23,7 @@ export class TaskService {
       }
     }
 
+    trace('12a', 'SERVICE → naya Task object bana raha hoon');
     const task = new Task({
       ...data,
       createdBy: userId,
@@ -29,8 +31,10 @@ export class TaskService {
       updatedAt: new Date(),
     });
 
+    trace('12b', 'SERVICE → MONGODB me task LIKH raha hoon ✍️');
     await task.save();
 
+    trace('12c', 'SERVICE → MONGODB me ActivityLog LIKH raha hoon ✍️ (ek request, DO writes)');
     await this.logActivity({
       userId,
       action: 'create',
@@ -39,6 +43,7 @@ export class TaskService {
       changes: { task: data },
     });
     
+    trace('12e', 'SERVICE → CACHE TOD raha hoon 💥 (POST todta hai, GET padhta hai)');
     //invalidate cache for task list and stats after creating a new task
     await redisHelpers.deletePattern('tasks:list:*');
     await redisHelpers.deletePattern('tasks:stats:*');
@@ -54,6 +59,7 @@ export class TaskService {
     tasks: ITask[];
     pagination: { page: number; limit: number; total: number; pages: number };
   }> {
+    console.log('STOP 12: MongoDB jaa raha hoon');
     const query: any = {
       $or: [{ assignedTo: userId }, { createdBy: userId }],
     };
@@ -76,6 +82,7 @@ export class TaskService {
     const limit = filters.limit || 10;
     const skip = (page - 1) * limit;
 
+    trace('12', 'SERVICE → MONGODB se PADH raha hoon 📖', JSON.stringify(query));
     const [tasks, total] = await Promise.all([
       Task.find(query)
         .sort({ createdAt: -1 })

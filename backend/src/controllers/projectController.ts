@@ -6,6 +6,7 @@ import {
   AddMemberRequest,
   RemoveMemberRequest,
 } from '../types/project.js';
+import { sendError, sendSuccess } from '../utils/response.js';
 
 const projectService = new ProjectService();
 
@@ -22,11 +23,11 @@ export class ProjectController {
     const projectData = req.body;
 
     if (!projectData.name) {
-      return res.status(400).json({ error: 'Project name is required' });
+      return sendError(res, 400, 'Project name is required');
     }
 
     const project = await projectService.createProject(projectData, userId);
-    res.status(201).json(project);
+    return sendSuccess(res, 201, 'Project created successfully', project);
   }
 
   /**
@@ -36,7 +37,7 @@ export class ProjectController {
   async getProjects(req: Request, res: Response) {
     const userId = (req as any).user.id;
     const projects = await projectService.getProjects(userId);
-    res.json(projects);
+    return sendSuccess(res, 200, 'Projects retrieved successfully', projects);
   }
 
   /**
@@ -47,7 +48,7 @@ export class ProjectController {
     const userId = (req as any).user.id;
     const { id } = req.params;
     const project = await projectService.getProjectById(id, userId);
-    res.json(project);
+    return sendSuccess(res, 200, 'Project retrieved successfully', project);
   }
 
   /**
@@ -61,7 +62,7 @@ export class ProjectController {
     const userId = (req as any).user.id;
     const { id } = req.params;
     const project = await projectService.updateProject(id, req.body, userId);
-    res.json(project);
+    return sendSuccess(res, 200, 'Project updated successfully', project);
   }
 
   /**
@@ -72,7 +73,7 @@ export class ProjectController {
     const userId = (req as any).user.id;
     const { id } = req.params;
     const result = await projectService.deleteProject(id, userId);
-    res.json(result);
+    return sendSuccess(res, 200, 'Project deleted successfully', result);
   }
 
   /**
@@ -88,7 +89,7 @@ export class ProjectController {
     const { memberUserId, role } = req.body;
 
     if (!memberUserId) {
-      return res.status(400).json({ error: 'Member user ID is required' });
+      return sendError(res, 400, 'Member user ID is required');
     }
 
     const project = await projectService.addMember(
@@ -97,7 +98,7 @@ export class ProjectController {
       memberUserId,
       role
     );
-    res.json(project);
+    return sendSuccess(res, 200, 'Member added successfully', project);
   }
 
   /**
@@ -113,10 +114,10 @@ export class ProjectController {
     const { memberUserId } = req.body;
 
     if (!memberUserId) {
-      return res.status(400).json({ error: 'Member user ID is required' });
+      return sendError(res, 400, 'Member user ID is required');
     }
 
     const project = await projectService.removeMember(id, userId, memberUserId);
-    res.json(project);
+    return sendSuccess(res, 200, 'Member removed successfully', project);
   }
 }

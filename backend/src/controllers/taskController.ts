@@ -5,6 +5,8 @@ import {
   UpdateTaskRequest,
   TaskFilters,
 } from '../types/task.js';
+import { sendError, sendSuccess } from '../utils/response.js';
+import { trace } from '../utils/trace.js';
 
 const taskService = new TaskService();
 
@@ -15,20 +17,20 @@ export class TaskController {
    */
   async createTask(req: Request<{}, {}, CreateTaskRequest>, res: Response) {
 
-    console.log('Received request to create task:');
     const userId = (req as any).user.id;
     const taskData = req.body;
+    trace('11', 'CONTROLLER createTask → userId =', userId);
 
     // Basic validation
     if (!taskData.title) {
-      return res.status(400).json({ error: 'Task title is required' });
+      return sendError(res, 400, 'Task title is required');
     }
     if (!taskData.assignedTo) {
-      return res.status(400).json({ error: 'Task must be assigned to someone' });
+      return sendError(res, 400, 'Task must be assigned to someone');
     }
 
     const task = await taskService.createTask(taskData, userId);
-    res.status(201).json(task);
+    return sendSuccess(res, 201, 'Task created successfully', task);
   }
 
   /**
@@ -38,8 +40,9 @@ export class TaskController {
   async getTasks(req: Request<{}, {}, {}, TaskFilters>, res: Response) {
     const userId = (req as any).user.id;
     const filters = req.query;
+    trace('11', 'CONTROLLER getTasks → userId =', userId);
     const result = await taskService.getTasks(userId, filters);
-    res.json(result);
+    return sendSuccess(res, 200, 'Tasks retrieved successfully', result);
   }
 
   /**
@@ -50,7 +53,7 @@ export class TaskController {
     const userId = (req as any).user.id;
     const { id } = req.params;
     const task = await taskService.getTaskById(id, userId);
-    res.json(task);
+    return sendSuccess(res, 200, 'Task retrieved successfully', task);
   }
 
   /**
@@ -64,7 +67,7 @@ export class TaskController {
     const userId = (req as any).user.id;
     const { id } = req.params;
     const task = await taskService.updateTask(id, req.body, userId);
-    res.json(task);
+    return sendSuccess(res, 200, 'Task updated successfully', task);
   }
 
   /**
@@ -80,11 +83,11 @@ export class TaskController {
     const { status } = req.body;
 
     if (!status) {
-      return res.status(400).json({ error: 'Status is required' });
+      return sendError(res, 400, 'Status is required');
     }
 
     const task = await taskService.updateStatus(id, status, userId);
-    res.json(task);
+    return sendSuccess(res, 200, 'Task status updated successfully', task);
   }
 
   /**
@@ -95,7 +98,7 @@ export class TaskController {
     const userId = (req as any).user.id;
     const { id } = req.params;
     const result = await taskService.deleteTask(id, userId);
-    res.json(result);
+    return sendSuccess(res, 200, 'Task deleted successfully', result);
   }
 
   /**
@@ -111,11 +114,11 @@ export class TaskController {
     const { text } = req.body;
 
     if (!text) {
-      return res.status(400).json({ error: 'Comment text is required' });
+      return sendError(res, 400, 'Comment text is required');
     }
 
     const task = await taskService.addComment(id, userId, text);
-    res.json(task);
+    return sendSuccess(res, 200, 'Comment added successfully', task);
   }
 
   /**
@@ -125,6 +128,6 @@ export class TaskController {
   async getStats(req: Request, res: Response) {
     const userId = (req as any).user.id;
     const stats = await taskService.getTaskStats(userId);
-    res.json(stats);
+    return sendSuccess(res, 200, 'Task statistics retrieved successfully', stats);
   }
 }

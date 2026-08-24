@@ -5,6 +5,8 @@ import { asyncHandler } from '../utils/helpers.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { cache } from '../middleware/cache.js';
 import { rateLimit, rateLimits } from '../middleware/rateLimit.js';
+import { validateBody } from '../middleware/validate.js';
+import { validateProjectCreate, validateProjectMember, validateProjectUpdate } from '../utils/validators.js';
 
 const router = Router();
 const projectController = new ProjectController();
@@ -12,7 +14,7 @@ const projectController = new ProjectController();
 // All project routes require authentication
 router.use(authenticate);
 
-router.post('/', rateLimit(rateLimits.strict), asyncHandler(projectController.createProject));
+router.post('/', rateLimit(rateLimits.strict), validateBody(validateProjectCreate), asyncHandler(projectController.createProject));
 
 
 // GET routes – cached
@@ -21,9 +23,9 @@ router.get('/:id', rateLimit(rateLimits.relaxed), cache('project:detail'), async
 
 
 
-router.put('/:id', rateLimit(rateLimits.strict), asyncHandler(projectController.updateProject));
+router.put('/:id', rateLimit(rateLimits.strict), validateBody(validateProjectUpdate), asyncHandler(projectController.updateProject));
 router.delete('/:id', rateLimit(rateLimits.strict), asyncHandler(projectController.deleteProject));
-router.post('/:id/members', rateLimit(rateLimits.strict), asyncHandler(projectController.addMember));
+router.post('/:id/members', rateLimit(rateLimits.strict), validateBody(validateProjectMember), asyncHandler(projectController.addMember));
 router.delete('/:id/members', rateLimit(rateLimits.strict), asyncHandler(projectController.removeMember));
 
 export default router;

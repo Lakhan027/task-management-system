@@ -1,5 +1,6 @@
 // src/middleware/logger.ts
 import { Request, Response, NextFunction } from 'express';
+import { traceEnd } from '../utils/trace.js';
 
 export const logger = (req: Request, res: Response, next: NextFunction): void => {
   const start = Date.now();
@@ -16,6 +17,7 @@ export const logger = (req: Request, res: Response, next: NextFunction): void =>
     console.log(
       `${color}${status}${reset} ${method} ${url} ${duration}ms`
     );
+    traceEnd(status, duration);
   });
 
   next();

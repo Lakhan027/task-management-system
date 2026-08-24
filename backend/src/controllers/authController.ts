@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from 'express';
 import authService from '../services/authService.js';
 import { generateToken } from '../utils/jwt.js';
+import { sendError, sendSuccess } from '../utils/response.js';
 
 class AuthController {
   /**
@@ -18,13 +19,9 @@ class AuthController {
 
       this.setAuthCookie(res, token);
 
-      res.status(201).json({
-        success: true,
-        message: 'User registered successfully',
-        data: {
-          token,
-          user,
-        },
+      sendSuccess(res, 201, 'User registered successfully', {
+        token,
+        user,
       });
     } catch (error) {
       next(error);
@@ -43,12 +40,8 @@ class AuthController {
 
       this.setAuthCookie(res, result.token);
 
-      res.status(200).json({
-        success: true,
-        message: 'Login successful',
-        data: {
-          user: result.user,
-        },
+      sendSuccess(res, 200, 'Login successful', {
+        user: result.user,
       });
     } catch (error) {
       next(error);
@@ -64,10 +57,7 @@ class AuthController {
       const token = this.extractToken(req);
 
       if (!token) {
-        res.status(401).json({
-          success: false,
-          message: 'No token provided',
-        });
+        sendError(res, 401, 'No token provided');
         return;
       }
 
@@ -75,12 +65,8 @@ class AuthController {
 
       this.setAuthCookie(res, result.token);
 
-      res.status(200).json({
-        success: true,
-        message: 'Token refreshed successfully',
-        data: {
-          user: result.user,
-        },
+      sendSuccess(res, 200, 'Token refreshed successfully', {
+        user: result.user,
       });
     } catch (error) {
       next(error);
@@ -97,21 +83,14 @@ class AuthController {
     const userId = req.user?.id;
 
     if (!token || !userId) {
-      res.status(401).json({
-        success: false,
-        message: 'User not authenticated or token missing',
-      });
+      sendError(res, 401, 'User not authenticated or token missing');
       return;
     }
 
     await authService.logout(token, userId);
     this.clearAuthCookie(res);
 
-    res.status(200).json({
-      success: true,
-      message: 'Logged out successfully',
-      data: null,
-    });
+    sendSuccess(res, 200, 'Logged out successfully', null);
   } catch (error) {
     next(error);
   }
@@ -136,11 +115,7 @@ class AuthController {
       await authService.logoutAll(userId);
       this.clearAuthCookie(res);
 
-      res.status(200).json({
-        success: true,
-        message: 'Logged out from all devices successfully',
-        data: null,
-      });
+      sendSuccess(res, 200, 'Logged out from all devices successfully', null);
     } catch (error) {
       next(error);
     }
@@ -155,20 +130,13 @@ class AuthController {
       const userId = req.user?.id;
 
       if (!userId) {
-        res.status(401).json({
-          success: false,
-          message: 'Not authenticated',
-        });
+        sendError(res, 401, 'Not authenticated');
         return;
       }
 
       const user = await authService.getCurrentUser(userId);
 
-      res.status(200).json({
-        success: true,
-        message: 'User fetched successfully',
-        data: user,
-      });
+      sendSuccess(res, 200, 'User fetched successfully', user);
     } catch (error) {
       next(error);
     }
@@ -184,28 +152,18 @@ class AuthController {
       const { oldPassword, newPassword } = req.body;
 
       if (!userId) {
-        res.status(401).json({
-          success: false,
-          message: 'Not authenticated',
-        });
+        sendError(res, 401, 'Not authenticated');
         return;
       }
 
       if (!oldPassword || !newPassword) {
-        res.status(400).json({
-          success: false,
-          message: 'Old password and new password are required',
-        });
+        sendError(res, 400, 'Old password and new password are required');
         return;
       }
 
       const result = await authService.changePassword(userId, oldPassword, newPassword);
 
-      res.status(200).json({
-        success: true,
-        message: result.message,
-        data: null,
-      });
+      sendSuccess(res, 200, result.message, null);
     } catch (error) {
       next(error);
     }

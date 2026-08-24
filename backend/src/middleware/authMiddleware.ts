@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import authService from "../services/authService.js";
+import { trace } from "../utils/trace.js";
 
 // ✅ Type definition for authenticated request
 export interface AuthRequest extends Request {
@@ -46,6 +47,7 @@ export const authenticate = async (
 
     // 2. Check if token exists
     if (!token) {
+      trace('7', 'GUARD 1 ❌ token hai hi nahi → 401, ROK DIYA ⛔');
       res.status(401).json({
         success: false,
         message: "Unauthorized - No token provided",
@@ -56,6 +58,7 @@ export const authenticate = async (
     // 3. Check if token is blacklisted
     const isBlacklisted = await authService.isTokenBlacklisted(token);
     if (isBlacklisted) {
+      trace('7', 'GUARD 1 ❌ token blacklist me hai (logout ho chuka) → ROK DIYA ⛔');
       res.status(401).json({
         success: false,
         message: "Unauthorized - Token has been invalidated",
@@ -85,6 +88,7 @@ export const authenticate = async (
 
      (req as any).token = token;
 
+    trace('7', 'GUARD 1 ✅ auth pass → req.user =', { id: decoded.id, role: decoded.role });
     next();
   } catch (error) {
     // Handle JWT specific errors

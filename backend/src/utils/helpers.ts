@@ -1,5 +1,6 @@
 // src/utils/helpers.ts
 import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { trace } from './trace.js';
 
 /**
  * Mask sensitive data in URL
@@ -40,5 +41,9 @@ export const getPort = (): string | number => process.env.PORT || 5000;
  * Async wrapper for route handlers
  */
 export const asyncHandler = (fn: Function): RequestHandler => (req: Request, res: Response, next: NextFunction) => {
-  Promise.resolve(fn(req, res, next)).catch(next);
+  trace('10', 'asyncHandler → controller ko bula raha hoon (error aaya to pakad lunga)');
+  Promise.resolve(fn(req, res, next)).catch((err) => {
+    trace('10', '💥 controller ne error phenka → errorHandler ko bhej raha hoon');
+    next(err);
+  });
 };

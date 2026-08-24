@@ -6,6 +6,7 @@ import redisHelpers from '../config/redis.js';
 import Task from '../models/mongodb/Task.js';
 import Project from '../models/mongodb/Project.js';
 import ActivityLog from '../models/mongodb/ActivityLog.js';
+import { sendSuccess } from '../utils/response.js';
 
 /**
  * GET /api/dashboard
@@ -179,10 +180,8 @@ export const getDashboardData = async (
       timestamp: new Date().toISOString(),
     };
 
-    res.status(200).json({
-      success: true,
-      data,
-    });
+    sendSuccess(res, 200, 'Dashboard data retrieved successfully', data);
+    return;
   } catch (error) {
     next(error);
   }
@@ -217,19 +216,19 @@ export const getHealthStats = async (
         redisHelpers.isConnected(),
       ]);
 
-    res.status(200).json({
-      success: true,
-      data: {
-        postgresql: { users: userCount },
-        mongodb: { tasks: taskCount, projects: projectCount, logs: logCount },
-        redis: { connected: redisConnected },
-        user: {
-          id: userId,
-          role: userRole,
-        },
-        timestamp: new Date().toISOString(),
+    const healthData = {
+      postgresql: { users: userCount },
+      mongodb: { tasks: taskCount, projects: projectCount, logs: logCount },
+      redis: { connected: redisConnected },
+      user: {
+        id: userId,
+        role: userRole,
       },
-    });
+      timestamp: new Date().toISOString(),
+    };
+
+    sendSuccess(res, 200, 'Dashboard health retrieved successfully', healthData);
+    return;
   } catch (error) {
     next(error);
   }

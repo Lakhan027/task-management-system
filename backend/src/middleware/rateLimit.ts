@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import redisHelpers from '../config/redis.js';
+import { trace } from '../utils/trace.js';
 
 interface RateLimitConfig {
   windowSeconds: number;  // Time window in seconds
@@ -21,7 +22,10 @@ export const rateLimit = (config: RateLimitConfig) => {
       const count = await redisHelpers.increment(key, config.windowSeconds);
       
       // Check if limit exceeded
+      trace('8', 'GUARD 2 → REDIS INCR ' + key + ' = ' + count + '/' + config.maxRequests);
+
       if (count > config.maxRequests) {
+        trace('8', 'GUARD 2 ❌ limit paar → 429, ROK DIYA ⛔');
         return res.status(429).json({
           success: false,
           message: config.message || 'Too many requests, please try again later.',
