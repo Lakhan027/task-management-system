@@ -1,13 +1,14 @@
 import { CreateProjectRequest, Project, UpdateProjectRequest } from '@/types/project';
 import { api } from './api';
+import { ApiResponse } from '@/types/api';
 
 export const projectApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getProjects: builder.query<Project[], void>({
       query: () => '/projects',
-       transformResponse: (response: Project[]) => {
+       transformResponse: (response: ApiResponse<Project[]>) => {
         // Backend returns array directly
-        return response || [];
+       return response.data;
       },
       providesTags: (result) =>
         result?.map((p) => ({ type: 'Project' as const, id: p._id })) || [{ type: 'Project' as const, id: 'LIST' }],
@@ -15,9 +16,9 @@ export const projectApi = api.injectEndpoints({
 
     getProject: builder.query<Project, string>({
       query: (id) => `/projects/${id}`,
-        transformResponse: (response: Project) => {
+        transformResponse: (response: ApiResponse<Project>) => {
         // Backend returns project directly
-        return response;
+        return response.data;
       },
       providesTags: (result, error, id) => [{ type: 'Project', id }],
     }),

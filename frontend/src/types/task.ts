@@ -75,7 +75,7 @@ export interface UpdateTaskRequest {
 }
 
 // ✅ Add this missing type
-export interface TaskFilters {
+export interface TaskFiltersBody {
   status?: TaskStatus;
   priority?: TaskPriority;
   tags?: string | string[];

@@ -1,5 +1,6 @@
 import { CreateTaskRequest, Task, TaskFilters, TasksResponse, TaskStats, UpdateTaskRequest } from '@/types/task';
 import { api } from './api';
+import { ApiResponse } from '@/types/api';
 
 export const taskApi = api.injectEndpoints({
   endpoints: (builder) => ({
@@ -8,11 +9,11 @@ export const taskApi = api.injectEndpoints({
         url: '/tasks',
         params,
       }),
-       transformResponse: (response: TasksResponse) => {
+       transformResponse: (response: ApiResponse<TasksResponse>) => {
         // Backend returns: { tasks: [], pagination: {} }
         return {
-          tasks: response.tasks || [],
-          pagination: response.pagination || { page: 1, limit: 10, total: 0, pages: 0 },
+          tasks: response.data.tasks,
+          pagination: response.data.pagination 
         };
       },
 
@@ -22,7 +23,7 @@ export const taskApi = api.injectEndpoints({
 
     getTask: builder.query<Task, string>({
   query: (id) => `/tasks/${id}`,
-  transformResponse: (response: Task) => response, // returns the task directly
+  transformResponse: (response: ApiResponse<Task>) => response.data, // returns the task directly
   providesTags: (result, error, id) => [{ type: 'Task', id }],
 }),
 
@@ -70,10 +71,11 @@ export const taskApi = api.injectEndpoints({
       invalidatesTags: (result, error, { id }) => [{ type: 'Task', id }],
     }),
 
-    getTaskStats: builder.query<TaskStats, void>({
-      query: () => '/tasks/stats',
-      providesTags: [{ type: 'Task', id: 'STATS' }],
-    }),
+   getTaskStats: builder.query<TaskStats, void>({
+  query: () => '/tasks/stats',
+  transformResponse: (response: ApiResponse<TaskStats>) => response.data,
+  providesTags: [{ type: 'Task', id: 'STATS' }],
+}),
   }),
 });
 
