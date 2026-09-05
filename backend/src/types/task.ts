@@ -93,6 +93,7 @@ export interface TaskFilters {
   dueDateAfter?: string;
   page?: number;
   limit?: number;
+  search?: string; // Added search field for filtering by title or description
 }
 
 

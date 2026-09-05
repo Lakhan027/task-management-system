@@ -3,7 +3,7 @@ import prisma from "../config/prisma.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { generateToken } from "../utils/jwt.js";
-import redisHelpers from '../config/redis.js';
+import redisHelpers from "../config/redis.js";
 
 import {
   UserRegisterInput,
@@ -12,6 +12,11 @@ import {
   LoginResponse,
 } from "../types/auth.js";
 import { IAuthService } from "./interfaces/auth-service.interface.js";
+import {
+  addSession,
+  getAllSessionTokens,
+  removeSession,
+} from "./sessionService.js";
 
 /**
  * Auth Service - Handles authentication business logic
@@ -110,6 +115,11 @@ class AuthService implements IAuthService {
       role: user.role,
     });
 
+    const decoded = jwt.decode(token) as { exp: number };
+    const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+
+    await addSession(user.id, token, expiresIn);
+
     // Cache user profile in Redis for faster access
     await redisHelpers.set(
       `user:${user.id}:profile`,
@@ -117,10 +127,10 @@ class AuthService implements IAuthService {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role,  
+        role: user.role,
         createdAt: user.createdAt,
       },
-      3600 // Cache for 1 hour
+      3600, // Cache for 1 hour
     );
 
     return {
@@ -143,38 +153,77 @@ class AuthService implements IAuthService {
       // Decode token to get expiration time
       const decoded = jwt.decode(token) as { exp: number };
       const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
-      
+
       // Store token in Redis blacklist with TTL until token expires
       const blacklistKey = `blacklist:${token}`;
-      await redisHelpers.set(blacklistKey, { userId, reason: 'logout' }, expiresIn);
-      
+      await redisHelpers.set(
+        blacklistKey,
+        { userId, reason: "logout" },
+        expiresIn,
+      );
+
       // Clear user session data from cache
-      await redisHelpers.deletePattern(`session:${userId}:*`);
+      // await redisHelpers.deletePattern(`session:${userId}:*`);
+      await removeSession(userId, token);
       await redisHelpers.delete(`user:${userId}:profile`);
-      
-      return { message: 'Logged out successfully' };
+
+      return { message: "Logged out successfully" };
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
       // Even if Redis fails, logout is still successful
-      return { message: 'Logged out successfully' };
+      return { message: "Logged out successfully" };
     }
   }
 
-  /**
-   * Logout from all devices
-   */
-  async logoutAll(userId: number): Promise<{ message: string }> {
+ /**
+ * Logout from all devices
+ */
+async logoutAll(userId: number): Promise<{ message: string }> {
+  try {
+    // 1. Get all active session tokens for this user
+    const tokens = await getAllSessionTokens(userId);
+
+    // 2. Blacklist every active token
+    // 2. Blacklist every active token — SAATH ME, sequential nahi
+await Promise.all(
+  tokens.map(async (token) => {
     try {
-      // Delete all session keys for this user
-      await redisHelpers.deletePattern(`session:${userId}:*`);
-      await redisHelpers.delete(`user:${userId}:profile`);
-      
-      return { message: 'Logged out from all devices successfully' };
-    } catch (error) {
-      console.error('Logout all error:', error);
-      return { message: 'Logged out from all devices successfully' };
+      const decoded = jwt.decode(token) as { exp?: number } | null;
+
+      if (!decoded?.exp) {
+        return;   // ⚠️ 'continue' nahi — ab ye alag function hai, 'return' use hota hai
+      }
+
+      const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+
+      if (expiresIn > 0) {
+        await redisHelpers.set(
+          `blacklist:${token}`,
+          { userId, reason: "logout_all" },
+          expiresIn
+        );
+      }
+    } catch (tokenError) {
+      console.error("Failed to blacklist token:", tokenError);
     }
-  }
+  })
+);
+
+   
+
+    // 4. Remove cached user profile
+    await redisHelpers.delete(
+      `user:${userId}:profile`
+    );
+
+    return {
+      message: "Logged out from all devices successfully",
+    };
+  } catch (error) {
+  console.error("Logout all error:", error);
+  return { message: "Logged out from all devices successfully" };   // 500 ki jagah
+}
+}
 
   /**
    * Check if token is blacklisted
@@ -199,14 +248,14 @@ class AuthService implements IAuthService {
       }
 
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { 
-        id: number; 
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+        id: number;
         email: string;
         role: string;
         iat: number;
         exp: number;
       };
-      
+
       // Get user details
       const user = await prisma.user.findUnique({
         where: { id: decoded.id },
@@ -234,12 +283,12 @@ class AuthService implements IAuthService {
       });
 
       // Blacklist the old token to prevent reuse
-      const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
-      if (expiresIn > 0) {
+      const refreshExpiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+      if (refreshExpiresIn > 0) {
         await redisHelpers.set(
           `blacklist:${token}`,
           { userId: user.id, reason: 'refreshed' },
-          expiresIn
+          refreshExpiresIn
         );
       }
 
@@ -263,7 +312,7 @@ class AuthService implements IAuthService {
    */
   async cleanupExpiredTokens(): Promise<void> {
     // Redis automatically handles TTL, but we can clean up patterns if needed
-    await redisHelpers.deletePattern('blacklist:*');
+    await redisHelpers.deletePattern("blacklist:*");
   }
 
   /**

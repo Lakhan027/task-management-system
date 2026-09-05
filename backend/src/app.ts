@@ -35,7 +35,7 @@ const app = express();
 // ─────────────────────────────────────────────────────────────
 // MIDDLEWARE
 // ─────────────────────────────────────────────────────────────
-
+  
 // 🎓 TRACE: sabse pehli line jo har request chhuti hai
 app.use((req: Request, _res: Response, next: NextFunction) => {
   traceStart(req.method, req.originalUrl);

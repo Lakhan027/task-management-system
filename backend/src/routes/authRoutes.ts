@@ -3,6 +3,9 @@ import express from "express";
 
 import { authenticate, optionalAuthenticate, authorize } from "../middleware/authMiddleware.js";
 import authController from "../controllers/authController.js";
+import { rateLimit, rateLimits } from "../middleware/rateLimit.js";
+import { validateBody } from "../middleware/validate.js";
+import { validateLogin, validateRegister } from "../utils/validators.js";
 
 const router = express.Router();
 
@@ -41,7 +44,7 @@ const router = express.Router();
  *       400:
  *         description: Validation error
  */
-router.post("/register", authController.register);
+router.post("/register", rateLimit(rateLimits.strict),validateBody(validateRegister),authController.register);
 
 /**
  * @swagger
@@ -74,7 +77,7 @@ router.post("/register", authController.register);
  *       401:
  *         description: Invalid email or password
  */
-router.post("/login", authController.login);
+router.post("/login", rateLimit(rateLimits.strict),validateBody(validateLogin), authController.login);    
 
 /**
  * @swagger

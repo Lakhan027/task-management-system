@@ -27,7 +27,9 @@ export const cache = (keyPrefix: string, ttlSeconds?: number) => {
       const originalJson = res.json.bind(res);
       res.json = function (data: any) {
         trace('13b', 'hijacked res.json → pehle REDIS me save 💾, phir asli res.json');
-        redisHelpers.set(cacheKey, data, ttlSeconds);
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+            redisHelpers.set(cacheKey, data, ttlSeconds);
+        }
         return originalJson(data);
       };
 

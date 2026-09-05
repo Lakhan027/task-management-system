@@ -1,14 +1,14 @@
-import Task from '../models/mongodb/Task.js';
-import ActivityLog from '../models/mongodb/ActivityLog.js';
+import Task from "../models/mongodb/Task.js";
+import ActivityLog from "../models/mongodb/ActivityLog.js";
 import {
   CreateTaskRequest,
   UpdateTaskRequest,
   TaskFilters,
   TaskStatus,
   ITask,
-} from '../types/task.js';
-import redisHelpers from '../config/redis.js';
-import { trace } from '../utils/trace.js';
+} from "../types/task.js";
+import redisHelpers from "../config/redis.js";
+import { trace } from "../utils/trace.js";
 
 export class TaskService {
   /**
@@ -17,13 +17,18 @@ export class TaskService {
   async createTask(data: CreateTaskRequest, userId: number): Promise<ITask> {
     // Validate status if provided
     if (data.status) {
-      const validStatuses: TaskStatus[] = ['todo', 'in-progress', 'review', 'done'];
+      const validStatuses: TaskStatus[] = [
+        "todo",
+        "in-progress",
+        "review",
+        "done",
+      ];
       if (!validStatuses.includes(data.status)) {
         throw new Error(`Invalid status: ${data.status}`);
       }
     }
 
-    trace('12a', 'SERVICE → naya Task object bana raha hoon');
+    trace("12a", "SERVICE → naya Task object bana raha hoon");
     const task = new Task({
       ...data,
       createdBy: userId,
@@ -31,22 +36,28 @@ export class TaskService {
       updatedAt: new Date(),
     });
 
-    trace('12b', 'SERVICE → MONGODB me task LIKH raha hoon ✍️');
+    trace("12b", "SERVICE → MONGODB me task LIKH raha hoon ✍️");
     await task.save();
 
-    trace('12c', 'SERVICE → MONGODB me ActivityLog LIKH raha hoon ✍️ (ek request, DO writes)');
+    trace(
+      "12c",
+      "SERVICE → MONGODB me ActivityLog LIKH raha hoon ✍️ (ek request, DO writes)",
+    );
     await this.logActivity({
       userId,
-      action: 'create',
-      resourceType: 'task',
+      action: "create",
+      resourceType: "task",
       resourceId: task._id.toString(),
       changes: { task: data },
     });
-    
-    trace('12e', 'SERVICE → CACHE TOD raha hoon 💥 (POST todta hai, GET padhta hai)');
+
+    trace(
+      "12e",
+      "SERVICE → CACHE TOD raha hoon 💥 (POST todta hai, GET padhta hai)",
+    );
     //invalidate cache for task list and stats after creating a new task
-    await redisHelpers.deletePattern('tasks:list:*');
-    await redisHelpers.deletePattern('tasks:stats:*');
+    await redisHelpers.deletePattern("tasks:list:*");
+    await redisHelpers.deletePattern("tasks:stats:*");
     await redisHelpers.deletePattern(`tasks:detail:*`);
 
     return task;
@@ -55,11 +66,14 @@ export class TaskService {
   /**
    * Get all tasks with filters & pagination
    */
-  async getTasks(userId: number, filters: TaskFilters = {}): Promise<{
+  async getTasks(
+    userId: number,
+    filters: TaskFilters = {},
+  ): Promise<{
     tasks: ITask[];
     pagination: { page: number; limit: number; total: number; pages: number };
   }> {
-    console.log('STOP 12: MongoDB jaa raha hoon');
+    console.log("STOP 12: MongoDB jaa raha hoon");
     const query: any = {
       $or: [{ assignedTo: userId }, { createdBy: userId }],
     };
@@ -67,7 +81,9 @@ export class TaskService {
     if (filters.status) query.status = filters.status;
     if (filters.priority) query.priority = filters.priority;
     if (filters.tags) {
-      const tagsArray = Array.isArray(filters.tags) ? filters.tags : [filters.tags];
+      const tagsArray = Array.isArray(filters.tags)
+        ? filters.tags
+        : [filters.tags];
       query.tags = { $in: tagsArray };
     }
     if (filters.projectId) query.projectId = filters.projectId;
@@ -78,17 +94,23 @@ export class TaskService {
       query.dueDate = { $gte: new Date(filters.dueDateAfter) };
     }
 
+    const escapeRegex = (str: string) =>str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    if (filters.search) {
+      query.title = { $regex: escapeRegex(filters.search), $options: "i" };
+    }
+
     const page = filters.page || 1;
     const limit = filters.limit || 10;
     const skip = (page - 1) * limit;
 
-    trace('12', 'SERVICE → MONGODB se PADH raha hoon 📖', JSON.stringify(query));
+    trace(
+      "12",
+      "SERVICE → MONGODB se PADH raha hoon 📖",
+      JSON.stringify(query),
+    );
     const [tasks, total] = await Promise.all([
-      Task.find(query)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(), // return plain objects for performance
+      Task.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(), // return plain objects for performance
       Task.countDocuments(query),
     ]);
 
@@ -113,7 +135,7 @@ export class TaskService {
     }
 
     if (task.assignedTo !== userId && task.createdBy !== userId) {
-      throw new Error('Unauthorized to view this task');
+      throw new Error("Unauthorized to view this task");
     }
 
     return task;
@@ -125,7 +147,7 @@ export class TaskService {
   async updateTask(
     taskId: string,
     updates: UpdateTaskRequest,
-    userId: number
+    userId: number,
   ): Promise<ITask> {
     const task = await this.getTaskById(taskId, userId);
 
@@ -152,16 +174,16 @@ export class TaskService {
     if (Object.keys(changes).length > 0) {
       await this.logActivity({
         userId,
-        action: 'update',
-        resourceType: 'task',
+        action: "update",
+        resourceType: "task",
         resourceId: task._id.toString(),
         changes,
       });
     }
 
-     // ✅ Invalidate related caches
-    await redisHelpers.deletePattern('tasks:list:*');
-    await redisHelpers.deletePattern('tasks:stats:*');
+    // ✅ Invalidate related caches
+    await redisHelpers.deletePattern("tasks:list:*");
+    await redisHelpers.deletePattern("tasks:stats:*");
     await redisHelpers.deletePattern(`tasks:detail:*`);
     await redisHelpers.delete(`tasks:detail:${taskId}`);
 
@@ -174,12 +196,17 @@ export class TaskService {
   async updateStatus(
     taskId: string,
     status: string,
-    userId: number
+    userId: number,
   ): Promise<ITask> {
-    const validStatuses: TaskStatus[] = ['todo', 'in-progress', 'review', 'done'];
+    const validStatuses: TaskStatus[] = [
+      "todo",
+      "in-progress",
+      "review",
+      "done",
+    ];
     if (!validStatuses.includes(status as TaskStatus)) {
       throw new Error(
-        `Invalid status: "${status}". Must be one of: ${validStatuses.join(', ')}`
+        `Invalid status: "${status}". Must be one of: ${validStatuses.join(", ")}`,
       );
     }
 
@@ -190,7 +217,7 @@ export class TaskService {
     task.status = newStatus;
     task.updatedAt = new Date();
 
-    if (newStatus === 'done') {
+    if (newStatus === "done") {
       task.completedAt = new Date();
     }
 
@@ -198,8 +225,8 @@ export class TaskService {
 
     await this.logActivity({
       userId,
-      action: 'status_change',
-      resourceType: 'task',
+      action: "status_change",
+      resourceType: "task",
       resourceId: task._id.toString(),
       changes: {
         status: { from: oldStatus, to: newStatus },
@@ -207,8 +234,8 @@ export class TaskService {
     });
 
     // ✅ Invalidate related caches
-    await redisHelpers.deletePattern('tasks:list:*');
-    await redisHelpers.deletePattern('tasks:stats:*');
+    await redisHelpers.deletePattern("tasks:list:*");
+    await redisHelpers.deletePattern("tasks:stats:*");
     await redisHelpers.delete(`tasks:detail:${taskId}`);
 
     return task;
@@ -217,27 +244,30 @@ export class TaskService {
   /**
    * Delete a task
    */
-  async deleteTask(taskId: string, userId: number): Promise<{ message: string }> {
+  async deleteTask(
+    taskId: string,
+    userId: number,
+  ): Promise<{ message: string }> {
     const task = await this.getTaskById(taskId, userId);
 
     if (task.createdBy !== userId) {
-      throw new Error('Only the creator can delete this task');
+      throw new Error("Only the creator can delete this task");
     }
 
     await task.deleteOne();
 
     await this.logActivity({
       userId,
-      action: 'delete',
-      resourceType: 'task',
+      action: "delete",
+      resourceType: "task",
       resourceId: taskId,
       changes: { deleted: task },
     });
 
-     // ✅ Invalidate all task caches
-     await redisHelpers.deletePattern('tasks:*');
+    // ✅ Invalidate all task caches
+    await redisHelpers.deletePattern("tasks:*");
 
-    return { message: 'Task deleted successfully' };
+    return { message: "Task deleted successfully" };
   }
 
   /**
@@ -246,7 +276,7 @@ export class TaskService {
   async addComment(
     taskId: string,
     userId: number,
-    text: string
+    text: string,
   ): Promise<ITask> {
     const task = await this.getTaskById(taskId, userId);
 
@@ -260,12 +290,11 @@ export class TaskService {
 
     await this.logActivity({
       userId,
-      action: 'comment',
-      resourceType: 'task',
+      action: "comment",
+      resourceType: "task",
       resourceId: task._id.toString(),
       changes: { comment: text },
     });
-
 
     // ✅ Invalidate related caches
     await redisHelpers.delete(`tasks:detail:${taskId}`);
@@ -288,7 +317,7 @@ export class TaskService {
       },
       {
         $group: {
-          _id: '$status',
+          _id: "$status",
           count: { $sum: 1 },
         },
       },
@@ -300,7 +329,7 @@ export class TaskService {
 
     const result: Record<TaskStatus, number> = {
       todo: 0,
-      'in-progress': 0,
+      "in-progress": 0,
       review: 0,
       done: 0,
     };
@@ -323,7 +352,7 @@ export class TaskService {
       const log = new ActivityLog(data);
       await log.save();
     } catch (error) {
-      console.error('Error logging activity:', error);
+      console.error("Error logging activity:", error);
     }
   }
 }
