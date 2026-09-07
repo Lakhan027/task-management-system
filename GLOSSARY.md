@@ -92,6 +92,61 @@ Update rule: after every lesson, append new terms here — don't rewrite old one
 | **COLLSCAN vs IXSCAN** | MongoDB's `.explain()` report: COLLSCAN means every document was checked; IXSCAN means the index was used to jump straight to matches. |
 | **`docsExamined` vs `nReturned`** | If these numbers are far apart, the query is scanning much more than it needs — a sign a useful index is missing. |
 
+## Track C1/C2 — Docker (backend Dockerfile built from scratch)
+
+| Term | Definition |
+|---|---|
+| **Image vs Container** | Image = the recipe/blueprint (on disk, doesn't run). Container = a running instance of that image (like a class vs an object). |
+| **Multi-stage build** | Splitting a Dockerfile into a heavy "builder" stage (compiles code, has dev tools) and a lean "runner" stage (only what's needed to run) — keeps the final image small. |
+| **Layer caching** | Each `COPY`/`RUN` line is cached; copying `package.json` before source code means `npm ci` doesn't rerun on every code change — only when dependencies actually change. |
+| **`COPY --from=<stage>`** | Copies files from one build stage into another — the only way two stages can share anything. |
+| **`npm ci` vs `npm ci --omit=dev`** | Builder stage needs dev dependencies (TypeScript compiler); runner stage only needs production ones — smaller final image. |
+| **The `node_modules` overwrite trap** | Copying a lean `node_modules` in the runner stage, then later doing `COPY --from=builder .../node_modules`, silently overwrites the lean one with the full (dev-included) one — wasted work, caught live in this project. |
+| **Re-running `prisma generate` in the runner stage** | Since the runner's own `node_modules` never had the generated Prisma client, it has to be regenerated there directly — `npx` fetches the `prisma` CLI temporarily for this without installing it permanently. |
+| **`USER` placement** | All setup (`npm ci`, `COPY`, file creation) runs as root, because root never hits permission errors. `USER appuser` goes dead last, right before `CMD` — so only the running process drops privileges, not the setup steps. |
+| **`HEALTHCHECK`** | A command Docker runs periodically to confirm the app is actually working, not just "started" — failures mark the container `unhealthy` without killing it. |
+| **`docker inspect --format '{{json .State.Health}}'`** | Shows the actual health-check command's output/exit code — the fastest way to see *why* a container is unhealthy. |
+
+## Bugs found live while containerizing the backend
+
+| # | Bug | What happened |
+|---|---|---|
+| 8 | `.env` values wrapped in quotes | `dotenv` (local dev) strips quotes automatically; Docker's `--env-file` does not — `DATABASE_URL="postgresql://..."` was read literally starting with `"`, failing the `startsWith('postgresql://')` check and crashing the container. |
+| 9 | Stray leading space before a key in `.env` | ` REDIS_URL=...` (leading space) risked being parsed as a key literally named `" REDIS_URL"`. |
+| 10 | MongoDB Atlas IP whitelist | The container's outbound IP wasn't in Atlas's Network Access list — same root cause would affect local dev too if the ISP-assigned IP changes. Not a Docker-specific bug, but only surfaced when testing the container's own connectivity. |
+| 11 | `wget: not found` inside `node:20-slim` | The `HEALTHCHECK` used `wget`, which isn't installed in the slim Debian image — every health check failed with exit code 1, marking the container permanently `unhealthy` even though the app worked fine. Fixed by using Node's own `http` module instead of installing an extra package. |
+| 12 | Stale `TaskFilters` import in `taskApi.ts` (frontend) | The type in `types/task.ts` had been renamed to `TaskFiltersBody` (likely to avoid colliding with the `TaskFilters` React component), but `taskApi.ts` was never updated — broke `tsc --noEmit`, which would have also broken `next build` inside the frontend Docker image. Unrelated to Docker itself, just surfaced while typechecking before containerizing. |
+| 13 | `npm ci` failing on optional platform-specific dependencies (frontend) | Tailwind v4's `@unrs/resolver-binding-wasm32-wasi` (a WASM fallback native binding) left `package-lock.json` with gaps in its `@emnapi/*` sub-dependency tree after a Windows `npm install`. Deleting just the lock file wasn't enough — `npm install` saw the existing `node_modules` and considered it "up to date." Only `rm -rf node_modules package-lock.json && npm install` forced a true from-scratch resolution. |
+| 14 | Missing `tsconfig.json`/`next.config.ts` in the build context (frontend) | The builder stage only copied `src/`, so `next build` couldn't resolve any `@/...` path alias — 29 "Module not found" errors, one per aliased import, all from the same root cause. |
+| 15 | `public/` never copied into the builder stage before the runner tried to steal it | `COPY --from=builder /app/public` failed with "not found" — you can't `COPY --from` a file that stage never had in the first place. |
+
+## Track C3 — Docker (frontend, Next.js standalone)
+
+| Term | Definition |
+|---|---|
+| **Build-time vs runtime env vars** | Backend reads `.env` at container *runtime* (`docker run --env-file`). Next.js bakes `NEXT_PUBLIC_*` vars into the JS bundle at *build time* — passing them at `docker run` is too late, the bundle is already frozen. |
+| **`ARG` + `ENV` pairing** | `ARG` alone is only visible inside the Dockerfile itself; promoting it to `ENV` makes it visible to `process.env` during `RUN npm run build`. |
+| **`docker build --build-arg`** | How a build-time `ARG` actually gets its value from outside the Dockerfile. |
+| **`output: "standalone"`** | A Next.js build mode that traces exactly which `node_modules` packages are needed at runtime and produces a minimal, self-contained `.next/standalone/server.js` — built specifically for Docker. |
+| **Standalone output's three missing pieces** | `.next/standalone` does not automatically include `public/` or `.next/static` — both must be copied into the runner stage separately, a well-known Next.js quirk. |
+| **`CMD ["node", "server.js"]` vs `npm start`** | `npm start` runs `next start`, which needs the full non-standalone build. The standalone folder ships its own `server.js` — that's what actually gets run in a lean image. |
+| **Image size payoff** | This project's frontend: 469MB single-stage vs 100MB with standalone + multi-stage — a concrete, measured number, not just theory. |
+
+## Track C4 — Docker Compose
+
+| Term | Definition |
+|---|---|
+| **`services:`** | Top-level key — each entry defines one container (`backend`, `frontend`), replacing a separate `docker run` per container. |
+| **`build.context`** | Which folder to build from — equivalent to the path given to `docker build`. |
+| **`env_file:`** | Same idea as `docker run --env-file`, just declared in YAML. |
+| **`build.args:`** | Where build-time `ARG` values go in Compose — equivalent to `--build-arg` on the CLI. |
+| **`depends_on:`** | Declares startup order between services (doesn't wait for "ready", just "started" unless combined with a healthcheck condition). |
+| **Service name = hostname** | Compose creates a private network where containers can reach each other by service name (`http://backend:5000`) — but only *container-to-container*, not from the user's browser. |
+| **The browser vs container-network trap** | `NEXT_PUBLIC_API_URL` runs in the *browser*, which is outside Compose's internal network — it must stay `http://localhost:5000/api`, never the service name, even though Compose would resolve the service name just fine from inside another container. |
+| **`${VARIABLE}` substitution** | Compose auto-reads a `.env` file at the project root and substitutes `${VARIABLE}` anywhere in the YAML — keeps values like a URL in one editable place instead of hardcoded inline. |
+| **Two separate `.env` files, two separate jobs** | `backend/.env` is injected into the backend container's runtime environment; the root `.env` is read by Compose itself to fill in `${...}` placeholders in the YAML — different files, different consumers. |
+| **`docker compose up -d --build`** | One command replaces two separate `docker build` + `docker run` pairs — builds both images and starts both containers together, on a shared network. |
+
 ## Bugs / lessons found live in this project's own code
 
 | Term | Definition |

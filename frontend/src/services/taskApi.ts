@@ -1,10 +1,10 @@
-import { CreateTaskRequest, Task, TaskFilters, TasksResponse, TaskStats, UpdateTaskRequest } from '@/types/task';
+import { CreateTaskRequest, Task, TaskFiltersBody, TasksResponse, TaskStats, UpdateTaskRequest } from '@/types/task';
 import { api } from './api';
 import { ApiResponse } from '@/types/api';
 
 export const taskApi = api.injectEndpoints({
   endpoints: (builder) => ({
-     getTasks: builder.query<TasksResponse, TaskFilters>({
+     getTasks: builder.query<TasksResponse, TaskFiltersBody>({
       query: (params) => ({
         url: '/tasks',
         params,

@@ -32,7 +32,7 @@ RUN npx prisma generate --schema=./prisma/schema.prisma
 # TypeScript → JavaScript. package.json ka "build": "tsc" script
 # chalta hai, output "dist/" folder me jaata hai (tsconfig.json me
 # outDir set hai)
-RUN npm run build
+  RUN npm run build
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -68,12 +68,42 @@ COPY --from=builder /app/dist ./dist
 # permanently install nahi karega — final image me nahi rahega.
 COPY prisma ./prisma
 RUN npx prisma generate --schema=./prisma/schema.prisma
+
+# Ye variables container ke andar hamesha available rahenge.
+# PORT yahan set kiya taaki neeche HEALTHCHECK isi value ko ${PORT}
+# se use kar sake — ek jagah badlo, sab jagah update ho jaaye.
 ENV NODE_ENV=production
 ENV PORT=5000
 
+# Sabse AAKHIR me user switch kiya — is se pehle ka sab kaam
+# (npm ci, useradd, COPY, prisma generate) ROOT se hua, kyunki
+# root ko file/folder banane me kabhi permission ki dikkat nahi
+# hoti. Ab jab sirf APP CHALANA baaki hai, tab non-root user pe
+# switch kiya — taaki agar app compromise ho, attacker ko root
+# access na mile. Files root ke banaye hue hain lekin appuser
+# unhe READ + EXECUTE kar sakta hai (WRITE ki zaroorat nahi hai
+# app chalane ke liye), isliye ye order kaam karta hai.
 USER appuser
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD wget -qO- http://localhost:${PORT}/api || exit 1
+# Docker ise har 30 second me chalayega, container start hone ke
+# 10 second baad se (--start-period). Agar ye command fail ho
+# (exit code non-zero), Docker container ko "unhealthy" mark
+# karega — crash nahi karega, lekin monitoring/orchestration tools
+# (jaise ECS, Kubernetes) ise dekh ke container replace kar sakte hain.
+#
+# 'wget' node:20-slim me installed NAHI hai (isliye pehle
+# "wget: not found" error aaya tha — docker inspect se pakda gaya).
+# Ek extra package install karne ki jagah, Node ke apne built-in
+# 'http' module se hi ek chhota check likh diya — koi naya
+# dependency nahi chahiye, Node to already container me hai.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
+  CMD node -e "require('http').get('http://localhost:${PORT}/api', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
+# Sirf DOCUMENTATION hai — batata hai "app is port pe sunta hai".
+# Bahar se access karne ke liye 'docker run -p' se hi port khulta hai,
+# EXPOSE khud kuch nahi kholta.
 EXPOSE 5000
+
+# Container START hote hi ye command chalti hai. Stage 1 ki
+# 'npm run build' ne 'dist/server.js' banaya tha — yehi ab chalega.
 CMD ["node", "dist/server.js"]
